@@ -1,15 +1,17 @@
-use core::convert::Infallible;
 use std::{
     ffi::{OsStr, OsString},
     fs::{OpenOptions, read_dir},
-    io::{self, Read, Write},
-    path::PathBuf,
+    io::{self, Read},
+    path::{Path, PathBuf},
     process::{Command, Stdio},
 };
 
 use tempfile::{TempDir, tempdir};
 
-use crate::{directory::Directory, repo::Repo};
+use crate::{
+    directory::{Directory, DirectoryError},
+    repo::Repo,
+};
 
 #[derive(Debug)]
 pub struct TestRepo {
@@ -38,27 +40,38 @@ impl TestRepo {
     pub fn new() -> io::Result<Self> {
         let dir = tempdir()?;
         let repo = TestRepo { location: dir };
-        repo.run_git(["init", "--bare"])?;
+        repo.run_git(["init"])?;
+        repo.run_git(["config", "user.name", "somebody"])?;
+        repo.run_git(["config", "user.email", "some-email"])?;
         Ok(repo)
     }
 
-    pub fn root(&self) -> TestRepoDirectory<'_> {
+    pub fn git_dir(&self) -> TestRepoDirectory<'_> {
         TestRepoDirectory {
             repo: self,
-            sub_path: PathBuf::new(),
+            sub_path: PathBuf::from(".git"),
         }
     }
 
-    pub fn repo(&self) -> Repo<TestRepoDirectory<'_>> {
-        Repo::new(self.root())
+    pub fn working_tree_path(&self) -> &Path {
+        self.location.path()
     }
 
-    // pub fn
+    pub fn repo(&self) -> Repo<TestRepoDirectory<'_>> {
+        Repo::new(self.git_dir())
+    }
+
+    pub fn add_all(&self) -> io::Result<()> {
+        self.run_git(["add", "--all"])
+    }
+
+    pub fn commit(&self, message: &str) -> io::Result<()> {
+        self.run_git(["commit", "-m", message])
+    }
 }
 
 impl<'r> Directory for TestRepoDirectory<'r> {
-    type Error = Infallible;
-    async fn open_subdir(&self, name: &str) -> Result<Self, Self::Error> {
+    async fn open_subdir(&self, name: &str) -> Result<Self, DirectoryError> {
         let os_path: OsString = name.into();
         let new_sub_path = self.sub_path.join(os_path);
         Ok(Self {
@@ -67,7 +80,7 @@ impl<'r> Directory for TestRepoDirectory<'r> {
         })
     }
 
-    async fn list_dir(&self) -> Result<Vec<String>, Self::Error> {
+    async fn list_dir(&self) -> Result<Vec<String>, DirectoryError> {
         let dir = read_dir(self.repo.location.path().join(&self.sub_path)).unwrap();
         let entries = dir
             .map_while(|entry| {
@@ -82,7 +95,7 @@ impl<'r> Directory for TestRepoDirectory<'r> {
         Ok(entries)
     }
 
-    async fn read_file(&self, name: &str) -> Result<Vec<u8>, Self::Error> {
+    async fn read_file(&self, name: &str) -> Result<Vec<u8>, DirectoryError> {
         let mut file = OpenOptions::new()
             .read(true)
             .open(self.repo.location.path().join(&self.sub_path).join(name))

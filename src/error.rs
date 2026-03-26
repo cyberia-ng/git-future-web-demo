@@ -1,37 +1,30 @@
-use crate::directory::Directory;
+use crate::directory::DirectoryError;
+use alloc::string::String;
 
-pub type GResult<T, D> = core::result::Result<T, Error<<D as Directory>::Error>>;
+pub type GResult<T> = core::result::Result<T, Error>;
 
 #[derive(Debug)]
-pub enum InternalError {
+pub enum Error {
+    Directory(DirectoryError),
     Utf8Error(core::str::Utf8Error),
     FromHexError(hex::FromHexError),
+    PathError(String),
 }
 
-#[derive(Debug)]
-pub enum Error<DirectoryError> {
-    Directory(DirectoryError),
-    Internal(InternalError),
-}
-
-impl<DirectoryError> Error<DirectoryError> {
-    pub const fn internal(error: InternalError) -> Self {
-        Error::Internal(error)
-    }
-
-    pub const fn directory(error: DirectoryError) -> Self {
-        Error::Directory(error)
-    }
-}
-
-impl<DirectoryError> From<core::str::Utf8Error> for Error<DirectoryError> {
+impl From<core::str::Utf8Error> for Error {
     fn from(value: core::str::Utf8Error) -> Self {
-        Self::Internal(InternalError::Utf8Error(value))
+        Self::Utf8Error(value)
     }
 }
 
-impl<DirectoryError> From<hex::FromHexError> for Error<DirectoryError> {
+impl From<hex::FromHexError> for Error {
     fn from(value: hex::FromHexError) -> Self {
-        Self::Internal(InternalError::FromHexError(value))
+        Self::FromHexError(value)
+    }
+}
+
+impl From<DirectoryError> for Error {
+    fn from(value: DirectoryError) -> Self {
+        Self::Directory(value)
     }
 }
