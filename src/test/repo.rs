@@ -1,7 +1,7 @@
 use std::{
     ffi::{OsStr, OsString},
     fs::{OpenOptions, read_dir},
-    io::{self, Read},
+    io::{self, Read, Write},
     path::{Path, PathBuf},
     process::{Command, Stdio},
 };
@@ -26,12 +26,22 @@ pub struct TestRepoDirectory<'r> {
 
 impl TestRepo {
     fn run_git(&self, args: impl IntoIterator<Item = impl AsRef<OsStr>>) -> io::Result<()> {
+        self.run_git_stdin(args, &[])
+    }
+
+    fn run_git_stdin(
+        &self,
+        args: impl IntoIterator<Item = impl AsRef<OsStr>>,
+        stdin: &[u8],
+    ) -> io::Result<()> {
         let mut git_process = Command::new("git")
+            .stdin(Stdio::piped())
             .stdout(Stdio::null())
             .stderr(Stdio::null())
             .args([OsStr::new("-C"), self.location.path().as_ref()])
             .args(args)
             .spawn()?;
+        git_process.stdin.take().unwrap().write_all(stdin).unwrap();
         let status = git_process.wait()?;
         assert!(status.success());
         Ok(())
@@ -66,14 +76,13 @@ impl TestRepo {
     }
 
     pub fn commit(&self, message: &str) -> io::Result<()> {
-        self.run_git(["commit", "-m", message])
+        self.run_git_stdin(["commit", "-F", "-"], message.as_bytes())
     }
 }
 
 impl<'r> Directory for TestRepoDirectory<'r> {
-    async fn open_subdir(&self, name: &str) -> Result<Self, DirectoryError> {
-        let os_path: OsString = name.into();
-        let new_sub_path = self.sub_path.join(os_path);
+    async fn open_subdir(&self, name: &[u8]) -> Result<Self, DirectoryError> {
+        let new_sub_path = self.sub_path.join(str::from_utf8(name).unwrap());
         Ok(Self {
             repo: self.repo,
             sub_path: new_sub_path,
@@ -95,10 +104,16 @@ impl<'r> Directory for TestRepoDirectory<'r> {
         Ok(entries)
     }
 
-    async fn read_file(&self, name: &str) -> Result<Vec<u8>, DirectoryError> {
+    async fn read_file(&self, name: &[u8]) -> Result<Vec<u8>, DirectoryError> {
         let mut file = OpenOptions::new()
             .read(true)
-            .open(self.repo.location.path().join(&self.sub_path).join(name))
+            .open(
+                self.repo
+                    .location
+                    .path()
+                    .join(&self.sub_path)
+                    .join(str::from_utf8(name).unwrap()),
+            )
             .unwrap();
         let mut out = vec![];
         file.read_to_end(&mut out).unwrap();

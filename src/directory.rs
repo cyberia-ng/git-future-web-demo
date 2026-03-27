@@ -6,7 +6,7 @@ use alloc::{boxed::Box, string::String, vec::Vec};
 pub struct DirectoryError(Box<dyn Any>);
 
 pub trait Directory: Sized + Clone {
-    fn open_subdir(&self, name: &str) -> impl Future<Output = Result<Self, DirectoryError>>;
+    fn open_subdir(&self, name: &[u8]) -> impl Future<Output = Result<Self, DirectoryError>>;
     fn list_dir(&self) -> impl Future<Output = Result<Vec<String>, DirectoryError>>;
-    fn read_file(&self, name: &str) -> impl Future<Output = Result<Vec<u8>, DirectoryError>>;
+    fn read_file(&self, name: &[u8]) -> impl Future<Output = Result<Vec<u8>, DirectoryError>>;
 }

@@ -1,5 +1,6 @@
-use crate::directory::DirectoryError;
-use alloc::string::String;
+use crate::{directory::DirectoryError, object::ObjectId};
+use alloc::vec::Vec;
+use miniz_oxide::inflate::DecompressError;
 
 pub type GResult<T> = core::result::Result<T, Error>;
 
@@ -8,7 +9,9 @@ pub enum Error {
     Directory(DirectoryError),
     Utf8Error(core::str::Utf8Error),
     FromHexError(hex::FromHexError),
-    PathError(String),
+    PathError(Vec<u8>),
+    DecompressError(DecompressError),
+    MalformedObject(ObjectId),
 }
 
 impl From<core::str::Utf8Error> for Error {
@@ -26,5 +29,11 @@ impl From<hex::FromHexError> for Error {
 impl From<DirectoryError> for Error {
     fn from(value: DirectoryError) -> Self {
         Self::Directory(value)
+    }
+}
+
+impl From<DecompressError> for Error {
+    fn from(value: DecompressError) -> Self {
+        Self::DecompressError(value)
     }
 }
