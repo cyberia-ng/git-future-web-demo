@@ -4,6 +4,7 @@ use crate::{
     repo::Repo,
 };
 use alloc::vec::Vec;
+use chrono::{DateTime, FixedOffset, TimeZone};
 use miniz_oxide::inflate::decompress_to_vec_zlib;
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
@@ -34,23 +35,23 @@ impl<'r, D: Directory> Object<'r, D> {
         let data = dir.read_file(&suffix_buf).await?;
         let data = decompress_to_vec_zlib(&data)?;
 
-        let mut blocks = data.split(|b| *b == b'\0');
-        let header = blocks.next().ok_or_else(|| Error::MalformedObject(id))?;
-        let mut header_toks = header.split(|b| *b == b' ');
-        let object_type = header_toks
-            .next()
-            .ok_or_else(|| Error::MalformedObject(id))?;
-        let expected_length = header_toks
-            .next()
-            .ok_or_else(|| Error::MalformedObject(id))?;
-        let expected_length_parsed = usize::from_str_radix(str::from_utf8(expected_length)?, 10)
-            .map_err(|_| Error::MalformedObject(id))?;
-        if header_toks.next().is_some() {
-            return Err(Error::MalformedObject(id));
-        }
-        let body = data
-            .get(object_type.len() + 1 + expected_length.len() + 1..expected_length_parsed)
-            .ok_or_else(|| Error::MalformedObject(id))?;
+        let parse_header_body = || -> Option<(&[u8], &[u8])> {
+            let mut blocks = data.split(|b| *b == b'\0');
+            let header = blocks.next()?;
+            let mut header_toks = header.split(|b| *b == b' ');
+            let object_type = header_toks.next()?;
+            let expected_length = header_toks.next()?;
+            let expected_length_parsed =
+                usize::from_str_radix(str::from_utf8(expected_length).ok()?, 10).ok()?;
+            if header_toks.next().is_some() {
+                return None;
+            }
+            let body = data
+                .get(object_type.len() + 1 + expected_length.len() + 1..expected_length_parsed)?;
+
+            Some((object_type, body))
+        };
+        let (object_type, body) = parse_header_body().ok_or_else(|| Error::MalformedObject(id))?;
 
         match object_type {
             b"commit" => Ok(Object::Commit(Commit::from_bytes(repo, id, body)?)),
@@ -64,29 +65,55 @@ pub struct Commit<'r, D> {
     repo: &'r Repo<D>,
     pub id: ObjectId,
     pub author: Vec<u8>,
+    pub author_date: DateTime<FixedOffset>,
     // author_date, committer, commit_date, message, parent(s), tree
 }
 
 impl<'r, D> Commit<'r, D> {
     fn from_bytes(repo: &'r Repo<D>, id: ObjectId, body: &[u8]) -> GResult<Self> {
-        let mut out = Commit {
-            id,
-            repo,
-            author: Vec::new(),
-        };
-        for line in body.split(|c| *c == b'\n') {
-            if let Some(author_line) = line.strip_prefix(b"author ") {
-                let mut tokens = author_line.split(|b| *b == b' ');
-                let tz = tokens
-                    .next_back()
-                    .ok_or_else(|| Error::MalformedObject(id))?;
-                let timestamp = tokens
-                    .next_back()
-                    .ok_or_else(|| Error::MalformedObject(id))?;
-                let author_len = author_line.len() - tz.len() - 1 - timestamp.len() - 1;
-                out.author.extend_from_slice(&author_line[0..author_len]);
+        let inner = || -> Option<Self> {
+            let mut author: Option<Vec<u8>> = None;
+            let mut author_date: Option<DateTime<FixedOffset>> = None;
+            for line in body.split(|c| *c == b'\n') {
+                if let Some(author_line) = line.strip_prefix(b"author ") {
+                    let (author_, author_date_) = parse_author_line(author_line)?;
+                    author = Some(author_);
+                    author_date = Some(author_date_);
+                }
             }
-        }
-        Ok(out)
+            Some(Commit {
+                id,
+                repo,
+                author: author?,
+                author_date: author_date?,
+            })
+        };
+        inner().ok_or_else(|| Error::MalformedObject(id))
     }
+}
+
+fn parse_author_line(author_line: &[u8]) -> Option<(Vec<u8>, DateTime<FixedOffset>)> {
+    let mut tokens = author_line.split(|b| *b == b' ');
+    let tz = tokens.next_back()?;
+    let timestamp = tokens.next_back()?;
+    let author_len = author_line.len() - tz.len() - 1 - timestamp.len() - 1;
+    let author = author_line[0..author_len].to_vec();
+    let timestamp = i64::from_str_radix(str::from_utf8(timestamp).ok()?, 10).ok()?;
+    let date = DateTime::from_timestamp(timestamp, 0)?;
+    let tz_sign: i32 = if *(tz.get(0)?) == b'+' {
+        1
+    } else if *(tz.get(0)?) == b'-' {
+        -1
+    } else {
+        return None;
+    };
+    let mut tz_components = tz.get(1..)?.split(|b| *b == b':');
+    let tz_hour = i32::from_str_radix(str::from_utf8(tz_components.next()?).ok()?, 10).ok()?;
+    let tz_minute = i32::from_str_radix(str::from_utf8(tz_components.next()?).ok()?, 10).ok()?;
+    if tz_components.next().is_some() {
+        return None;
+    }
+    let offset = FixedOffset::east_opt(tz_sign * (3600 * tz_hour + 60 * tz_minute))?;
+    let author_date = date.with_timezone(&offset);
+    Some((author, author_date))
 }
