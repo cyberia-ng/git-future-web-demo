@@ -93,7 +93,7 @@ mod test {
     const author_date_rfc3339: &str = "2026-03-27T19:35:00+05:30";
     const committer_name: &str = "committer";
     const committer_email: &str = "committer-email";
-    const committer_date_rfc3339: &str = "2025-02-26T08:24:30-08:00";
+    const commit_date_rfc3339: &str = "2025-02-26T08:24:30-08:00";
 
     fn make_basic_commit(test_repo: &TestRepo) {
         let wd_path = test_repo.working_tree_path();
@@ -113,7 +113,7 @@ mod test {
                 author_name,
                 author_email,
                 DateTime::parse_from_rfc3339(author_date_rfc3339).unwrap(),
-                DateTime::parse_from_rfc3339(committer_date_rfc3339).unwrap(),
+                DateTime::parse_from_rfc3339(commit_date_rfc3339).unwrap(),
             )
             .unwrap();
     }
@@ -158,9 +158,19 @@ mod test {
             _ => panic!(),
         };
         assert_eq!(commit.author_name.as_slice(), author_name.as_bytes());
+        assert_eq!(commit.author_email.as_slice(), author_email.as_bytes());
         assert_eq!(
             commit.author_date,
             DateTime::parse_from_rfc3339(author_date_rfc3339).unwrap()
+        );
+        assert_eq!(commit.committer_name.as_slice(), committer_name.as_bytes());
+        assert_eq!(
+            commit.committer_email.as_slice(),
+            committer_email.as_bytes()
+        );
+        assert_eq!(
+            commit.commit_date,
+            DateTime::parse_from_rfc3339(commit_date_rfc3339).unwrap()
         );
 
         // println!("{:?}", commit);

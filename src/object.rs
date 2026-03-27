@@ -10,9 +10,10 @@ use nom::{
     Parser,
     branch::alt,
     bytes::complete::{tag, take, take_until},
-    character::complete::{alpha1, char, i32, i64, usize},
+    character::complete::{alpha1, char, hex_digit0, i32, i64, usize},
     combinator::all_consuming,
-    sequence::terminated,
+    multi::many,
+    sequence::{delimited, terminated},
 };
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
@@ -68,36 +69,62 @@ pub struct Commit {
     pub author_name: Vec<u8>,
     pub author_email: Vec<u8>,
     pub author_date: DateTime<FixedOffset>,
-    // author_date, committer, commit_date, message, parent(s), tree
+    pub committer_name: Vec<u8>,
+    pub committer_email: Vec<u8>,
+    pub commit_date: DateTime<FixedOffset>,
+    pub tree: ObjectId,
+    pub parents: Vec<ObjectId>,
+    pub message: Vec<u8>,
 }
 
 impl Commit {
     fn from_bytes(id: ObjectId, body: &[u8]) -> Option<Self> {
-        let mut author_name: Option<Vec<u8>> = None;
-        let mut author_email: Option<Vec<u8>> = None;
-        let mut author_date: Option<DateTime<FixedOffset>> = None;
-        for line in body.split(|c| *c == b'\n') {
-            if let Some(author_line) = line.strip_prefix(b"author ") {
-                let (_, (author_name_, author_email_, author_date_)) =
-                    parse_author_committer_line(author_line).ok()?;
-                author_name = Some(author_name_.to_vec());
-                author_email = Some(author_email_.to_vec());
-                author_date = Some(author_date_);
-            }
-        }
+        let mut p = (
+            delimited(tag("tree "), parse_object_id, char('\n')),
+            many(0.., delimited(tag("parent "), parse_object_id, char('\n'))),
+            delimited(tag("author "), parse_author_committer_line, char('\n')),
+            delimited(tag("committer "), parse_author_committer_line, tag("\n\n")),
+        );
+        let (
+            message,
+            (
+                tree_id,
+                parents,
+                (author_name, author_email, author_date),
+                (committer_name, committer_email, commit_date),
+            ),
+        ) = p.parse_complete(body).ok()?;
+
         Some(Commit {
             id,
-            author_name: author_name?,
-            author_email: author_email?,
-            author_date: author_date?,
+            author_name: author_name.to_vec(),
+            author_email: author_email.to_vec(),
+            author_date,
+            committer_name: committer_name.to_vec(),
+            committer_email: committer_email.to_vec(),
+            commit_date,
+            tree: tree_id,
+            parents,
+            message: message.to_vec(),
         })
     }
+}
+
+fn parse_object_id(input: &[u8]) -> nom::IResult<&[u8], ObjectId> {
+    take(40usize)
+        .and_then(hex_digit0)
+        .map_res(|hex_chars| -> Result<ObjectId, hex::FromHexError> {
+            let mut out = ObjectId([0u8; 20]);
+            hex::decode_to_slice(hex_chars, &mut out.0)?;
+            Ok(out)
+        })
+        .parse(input)
 }
 
 fn parse_author_committer_line(
     input: &[u8],
 ) -> nom::IResult<&[u8], (&[u8], &[u8], DateTime<FixedOffset>)> {
-    let mut p = all_consuming((
+    (
         terminated(take_until(" <"), tag(" <")),
         terminated(take_until("> "), tag("> ")),
         (
@@ -112,8 +139,8 @@ fn parse_author_committer_line(
                 let author_date = date.with_timezone(&offset);
                 Some(author_date)
             }),
-    ));
-    p.parse(input)
+    )
+        .parse(input)
 }
 
 #[cfg(test)]
