@@ -19,12 +19,8 @@ impl<D: Directory> Repo<D> {
 
 #[cfg(test)]
 mod tests {
-    use crate::{
-        reference::{RefTarget, RefType},
-        test::repo::TestRepo,
-    };
+    use crate::{reference::RefType, test::repo::TestRepo};
     use futures::executor::block_on;
-    use std::{fs::OpenOptions, io::Write as _};
 
     #[test]
     fn read_head() {

@@ -4,8 +4,9 @@ use crate::{
     repo::Repo,
 };
 use alloc::vec::Vec;
-use chrono::{DateTime, FixedOffset, TimeZone};
+use chrono::{DateTime, FixedOffset};
 use miniz_oxide::inflate::decompress_to_vec_zlib;
+use nom::character::complete::{alpha1, char, digit1};
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
 pub struct ObjectId([u8; 20]);
@@ -26,7 +27,7 @@ pub enum Object<'r, D> {
 impl<'r, D: Directory> Object<'r, D> {
     pub async fn lookup(repo: &'r Repo<D>, id: ObjectId) -> GResult<Self> {
         let (prefix, suffix) = id.0.split_at(1);
-        let mut prefix_buf = [0u8; 2 * 1];
+        let mut prefix_buf = [0u8; 2];
         hex::encode_to_slice(prefix, &mut prefix_buf)?;
         let mut suffix_buf = [0u8; 2 * 19];
         hex::encode_to_slice(suffix, &mut suffix_buf)?;
@@ -36,28 +37,32 @@ impl<'r, D: Directory> Object<'r, D> {
         let data = decompress_to_vec_zlib(&data)?;
 
         let parse_header_body = || -> Option<(&[u8], &[u8])> {
-            let mut blocks = data.split(|b| *b == b'\0');
-            let header = blocks.next()?;
-            let mut header_toks = header.split(|b| *b == b' ');
-            let object_type = header_toks.next()?;
-            let expected_length = header_toks.next()?;
-            let expected_length_parsed =
-                usize::from_str_radix(str::from_utf8(expected_length).ok()?, 10).ok()?;
-            if header_toks.next().is_some() {
+            let (rest, object_type) = alpha1::<_, ()>(data.as_ref()).ok()?;
+            let (rest, _) = char::<_, ()>(' ')(rest).ok()?;
+            let (rest, expected_len) = decimal_usize(rest)?;
+            let (body, _) = char::<_, ()>('\0')(rest).ok()?;
+            if body.len() != expected_len {
                 return None;
             }
-            let body = data
-                .get(object_type.len() + 1 + expected_length.len() + 1..expected_length_parsed)?;
-
             Some((object_type, body))
         };
-        let (object_type, body) = parse_header_body().ok_or_else(|| Error::MalformedObject(id))?;
+
+        let (object_type, body) = parse_header_body().ok_or(Error::MalformedObject)?;
 
         match object_type {
-            b"commit" => Ok(Object::Commit(Commit::from_bytes(repo, id, body)?)),
+            b"commit" => Ok(Object::Commit(
+                Commit::from_bytes(repo, id, body).ok_or(Error::MalformedObject)?,
+            )),
             _ => todo!(),
         }
     }
+}
+
+fn decimal_usize(input: &[u8]) -> Option<(&[u8], usize)> {
+    let (rest, parsed) = digit1::<_, ()>(input).ok()?;
+    let parsed = str::from_utf8(parsed).unwrap();
+    let parsed = usize::from_str_radix(parsed, 10).ok()?;
+    Some((rest, parsed))
 }
 
 #[derive(Debug)]
@@ -70,25 +75,22 @@ pub struct Commit<'r, D> {
 }
 
 impl<'r, D> Commit<'r, D> {
-    fn from_bytes(repo: &'r Repo<D>, id: ObjectId, body: &[u8]) -> GResult<Self> {
-        let inner = || -> Option<Self> {
-            let mut author: Option<Vec<u8>> = None;
-            let mut author_date: Option<DateTime<FixedOffset>> = None;
-            for line in body.split(|c| *c == b'\n') {
-                if let Some(author_line) = line.strip_prefix(b"author ") {
-                    let (author_, author_date_) = parse_author_line(author_line)?;
-                    author = Some(author_);
-                    author_date = Some(author_date_);
-                }
+    fn from_bytes(repo: &'r Repo<D>, id: ObjectId, body: &[u8]) -> Option<Self> {
+        let mut author: Option<Vec<u8>> = None;
+        let mut author_date: Option<DateTime<FixedOffset>> = None;
+        for line in body.split(|c| *c == b'\n') {
+            if let Some(author_line) = line.strip_prefix(b"author ") {
+                let (author_, author_date_) = parse_author_line(author_line)?;
+                author = Some(author_);
+                author_date = Some(author_date_);
             }
-            Some(Commit {
-                id,
-                repo,
-                author: author?,
-                author_date: author_date?,
-            })
-        };
-        inner().ok_or_else(|| Error::MalformedObject(id))
+        }
+        Some(Commit {
+            id,
+            repo,
+            author: author?,
+            author_date: author_date?,
+        })
     }
 }
 
@@ -100,9 +102,9 @@ fn parse_author_line(author_line: &[u8]) -> Option<(Vec<u8>, DateTime<FixedOffse
     let author = author_line[0..author_len].to_vec();
     let timestamp = i64::from_str_radix(str::from_utf8(timestamp).ok()?, 10).ok()?;
     let date = DateTime::from_timestamp(timestamp, 0)?;
-    let tz_sign: i32 = if *(tz.get(0)?) == b'+' {
+    let tz_sign: i32 = if *(tz.first()?) == b'+' {
         1
-    } else if *(tz.get(0)?) == b'-' {
+    } else if *(tz.first()?) == b'-' {
         -1
     } else {
         return None;
