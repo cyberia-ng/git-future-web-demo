@@ -7,9 +7,8 @@ use crate::{
 use alloc::vec::Vec;
 
 #[derive(Debug)]
-pub struct Ref<'r, D> {
+pub struct Ref {
     inner: RefType,
-    repo: &'r Repo<D>,
 }
 
 #[derive(Debug, PartialEq, Eq)]
@@ -19,33 +18,31 @@ pub enum RefType {
 }
 
 #[derive(Debug)]
-pub enum RefTarget<'r, D> {
-    Ref(Ref<'r, D>),
-    Object(Object<'r, D>),
+pub enum RefTarget {
+    Ref(Ref),
+    Object(Object),
 }
 
-impl<'r, D: Directory> Ref<'r, D> {
-    pub const fn direct(repo: &'r Repo<D>, oid: ObjectId) -> Self {
+impl Ref {
+    pub const fn direct(oid: ObjectId) -> Self {
         Ref {
             inner: RefType::Direct(oid),
-            repo,
         }
     }
 
-    pub const fn symbolic(repo: &'r Repo<D>, target: Vec<u8>) -> Self {
+    pub const fn symbolic(target: Vec<u8>) -> Self {
         Ref {
             inner: RefType::Symbolic(target),
-            repo,
         }
     }
 
-    pub(crate) fn from_content(repo: &'r Repo<D>, content: &[u8]) -> GResult<Self> {
+    pub(crate) fn from_content(content: &[u8]) -> GResult<Self> {
         if let Some(target) = content.strip_prefix(b"ref: refs/") {
             let target = target.trim_ascii_end().to_vec();
-            Ok(Ref::symbolic(repo, target))
+            Ok(Ref::symbolic(target))
         } else {
             let oid = ObjectId::from_encoded(content)?;
-            Ok(Ref::direct(repo, oid))
+            Ok(Ref::direct(oid))
         }
     }
 
@@ -53,7 +50,7 @@ impl<'r, D: Directory> Ref<'r, D> {
         &self.inner
     }
 
-    pub async fn target(&self) -> GResult<RefTarget<'r, D>> {
+    pub async fn target<D: Directory>(&self, repo: &Repo<D>) -> GResult<RefTarget> {
         use RefType::*;
         match &self.inner {
             Symbolic(s) => {
@@ -61,16 +58,16 @@ impl<'r, D: Directory> Ref<'r, D> {
                 let file_name = path_components
                     .next_back()
                     .ok_or(Error::PathError(s.clone()))?;
-                let mut dir = self.repo.git_dir.open_subdir(b"refs").await?;
+                let mut dir = repo.git_dir.open_subdir(b"refs").await?;
                 for component in path_components {
                     dir = dir.open_subdir(component).await?;
                 }
                 let file_content = dir.read_file(file_name).await?;
-                let reference = Self::from_content(self.repo, &file_content)?;
+                let reference = Self::from_content(&file_content)?;
                 Ok(RefTarget::Ref(reference))
             }
             Direct(oid) => {
-                let object = Object::lookup(self.repo, *oid).await?;
+                let object = Object::lookup(repo, *oid).await?;
                 Ok(RefTarget::Object(object))
             }
         }
@@ -128,7 +125,7 @@ mod test {
 
         let repo = test_repo.repo();
         let head = block_on(repo.head()).unwrap();
-        let head_target = block_on(head.target()).unwrap();
+        let head_target = block_on(head.target(&repo)).unwrap();
         match head_target {
             RefTarget::Object(_) => panic!(),
             RefTarget::Ref(r) => {
@@ -151,9 +148,9 @@ mod test {
 
         let repo = test_repo.repo();
         let head = block_on(repo.head()).unwrap();
-        let head_target = block_on(head.target()).unwrap();
+        let head_target = block_on(head.target(&repo)).unwrap();
         let head_target_target = match head_target {
-            RefTarget::Ref(r) => block_on(r.target()).unwrap(),
+            RefTarget::Ref(r) => block_on(r.target(&repo)).unwrap(),
             _ => panic!(),
         };
         let commit = match head_target_target {

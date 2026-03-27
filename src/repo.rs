@@ -10,9 +10,9 @@ impl<D: Directory> Repo<D> {
         Repo { git_dir }
     }
 
-    pub async fn head(&self) -> GResult<Ref<'_, D>> {
+    pub async fn head(&self) -> GResult<Ref> {
         let ref_content = self.git_dir.read_file(b"HEAD").await?;
-        let reference = Ref::from_content(self, &ref_content)?;
+        let reference = Ref::from_content(&ref_content)?;
         Ok(reference)
     }
 }

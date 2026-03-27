@@ -27,12 +27,12 @@ impl ObjectId {
 }
 
 #[derive(Debug)]
-pub enum Object<'r, D> {
-    Commit(Commit<'r, D>),
+pub enum Object {
+    Commit(Commit),
 }
 
-impl<'r, D: Directory> Object<'r, D> {
-    pub async fn lookup(repo: &'r Repo<D>, id: ObjectId) -> GResult<Self> {
+impl Object {
+    pub async fn lookup<D: Directory>(repo: &Repo<D>, id: ObjectId) -> GResult<Self> {
         let (prefix, suffix) = id.0.split_at(1);
         let mut prefix_buf = [0u8; 2];
         hex::encode_to_slice(prefix, &mut prefix_buf)?;
@@ -55,7 +55,7 @@ impl<'r, D: Directory> Object<'r, D> {
 
         match object_type {
             b"commit" => Ok(Object::Commit(
-                Commit::from_bytes(repo, id, body).ok_or_else(|| Error::MalformedObject(id))?,
+                Commit::from_bytes(id, body).ok_or_else(|| Error::MalformedObject(id))?,
             )),
             _ => todo!(),
         }
@@ -63,8 +63,7 @@ impl<'r, D: Directory> Object<'r, D> {
 }
 
 #[derive(Debug)]
-pub struct Commit<'r, D> {
-    repo: &'r Repo<D>,
+pub struct Commit {
     pub id: ObjectId,
     pub author_name: Vec<u8>,
     pub author_email: Vec<u8>,
@@ -72,8 +71,8 @@ pub struct Commit<'r, D> {
     // author_date, committer, commit_date, message, parent(s), tree
 }
 
-impl<'r, D> Commit<'r, D> {
-    fn from_bytes(repo: &'r Repo<D>, id: ObjectId, body: &[u8]) -> Option<Self> {
+impl Commit {
+    fn from_bytes(id: ObjectId, body: &[u8]) -> Option<Self> {
         let mut author_name: Option<Vec<u8>> = None;
         let mut author_email: Option<Vec<u8>> = None;
         let mut author_date: Option<DateTime<FixedOffset>> = None;
@@ -88,7 +87,6 @@ impl<'r, D> Commit<'r, D> {
         }
         Some(Commit {
             id,
-            repo,
             author_name: author_name?,
             author_email: author_email?,
             author_date: author_date?,
@@ -96,7 +94,9 @@ impl<'r, D> Commit<'r, D> {
     }
 }
 
-fn parse_author_committer_line(input: &[u8]) -> nom::IResult<&[u8], (&[u8], &[u8], DateTime<FixedOffset>)> {
+fn parse_author_committer_line(
+    input: &[u8],
+) -> nom::IResult<&[u8], (&[u8], &[u8], DateTime<FixedOffset>)> {
     let mut p = all_consuming((
         terminated(take_until(" <"), tag(" <")),
         terminated(take_until("> "), tag("> ")),
