@@ -3,7 +3,7 @@ use core::{any::Any, future::Future};
 use alloc::{boxed::Box, string::String, vec::Vec};
 
 #[derive(Debug)]
-pub struct DirectoryError(Box<dyn Any>);
+pub struct DirectoryError(pub Box<dyn Any>);
 
 pub trait Directory: Sized + Clone {
     fn open_subdir(&self, name: &[u8]) -> impl Future<Output = Result<Self, DirectoryError>>;

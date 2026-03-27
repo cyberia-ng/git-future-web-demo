@@ -1,4 +1,4 @@
-use crate::directory::DirectoryError;
+use crate::{directory::DirectoryError, object::ObjectId};
 use alloc::vec::Vec;
 use miniz_oxide::inflate::DecompressError;
 
@@ -10,7 +10,7 @@ pub enum Error {
     PathError(Vec<u8>),
     DecompressError(DecompressError),
 
-    MalformedObject,
+    MalformedObject(ObjectId),
     FromHexError(hex::FromHexError),
 }
 

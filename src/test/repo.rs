@@ -6,6 +6,7 @@ use std::{
     process::{Command, Stdio},
 };
 
+use chrono::{DateTime, FixedOffset};
 use tempfile::{TempDir, tempdir};
 
 use crate::{
@@ -25,35 +26,47 @@ pub struct TestRepoDirectory<'r> {
 }
 
 impl TestRepo {
-    fn run_git(&self, args: impl IntoIterator<Item = impl AsRef<OsStr>>) -> io::Result<()> {
-        self.run_git_stdin(args, &[])
+    fn run_git(&self, args: impl IntoIterator<Item = impl AsRef<OsStr>>) -> io::Result<String> {
+        self.run_git_stdin_env(args, &[], Vec::<(&str, &str)>::new())
     }
 
-    fn run_git_stdin(
+    fn run_git_stdin_env(
         &self,
         args: impl IntoIterator<Item = impl AsRef<OsStr>>,
         stdin: &[u8],
-    ) -> io::Result<()> {
+        env: impl IntoIterator<Item = (impl AsRef<OsStr>, impl AsRef<OsStr>)>,
+    ) -> io::Result<String> {
         let mut git_process = Command::new("git")
             .stdin(Stdio::piped())
-            .stdout(Stdio::null())
+            .stdout(Stdio::piped())
             .stderr(Stdio::null())
             .args([OsStr::new("-C"), self.location.path().as_ref()])
             .args(args)
+            .envs(env)
             .spawn()?;
-        git_process.stdin.take().unwrap().write_all(stdin).unwrap();
+        git_process.stdin.take().unwrap().write_all(stdin)?;
         let status = git_process.wait()?;
         assert!(status.success());
-        Ok(())
+        let mut output = Vec::new();
+        git_process
+            .stdout
+            .take()
+            .unwrap()
+            .read_to_end(&mut output)?;
+        Ok(String::from_utf8(output).unwrap())
     }
 
     pub fn new() -> io::Result<Self> {
         let dir = tempdir()?;
         let repo = TestRepo { location: dir };
         repo.run_git(["init"])?;
-        repo.run_git(["config", "user.name", "somebody"])?;
-        repo.run_git(["config", "user.email", "some-email"])?;
         Ok(repo)
+    }
+
+    pub fn set_user(&self, name: &str, email: &str) -> io::Result<()> {
+        self.run_git(["config", "user.name", name])?;
+        self.run_git(["config", "user.email", email])?;
+        Ok(())
     }
 
     pub fn git_dir(&self) -> TestRepoDirectory<'_> {
@@ -72,11 +85,33 @@ impl TestRepo {
     }
 
     pub fn add_all(&self) -> io::Result<()> {
-        self.run_git(["add", "--all"])
+        self.run_git(["add", "--all"])?;
+        Ok(())
     }
 
-    pub fn commit(&self, message: &str) -> io::Result<()> {
-        self.run_git_stdin(["commit", "-F", "-"], message.as_bytes())
+    pub fn commit(
+        &self,
+        message: &str,
+        author_name: &str,
+        author_email: &str,
+        author_date: DateTime<FixedOffset>,
+        committer_date: DateTime<FixedOffset>,
+    ) -> io::Result<()> {
+        self.run_git_stdin_env(
+            [
+                "commit",
+                "-F",
+                "-",
+                "--author",
+                &format!("{} <{}>", author_name, author_email),
+            ],
+            message.as_bytes(),
+            vec![
+                ("GIT_AUTHOR_DATE", &author_date.to_rfc3339()),
+                ("GIT_COMMITTER_DATE", &committer_date.to_rfc3339()),
+            ],
+        )?;
+        Ok(())
     }
 }
 
@@ -119,13 +154,4 @@ impl<'r> Directory for TestRepoDirectory<'r> {
         file.read_to_end(&mut out).unwrap();
         Ok(out)
     }
-}
-
-pub fn make_some_files() -> io::Result<TempDir> {
-    let dir = TempDir::new()?;
-    OpenOptions::new()
-        .create(true)
-        .write(true)
-        .open(dir.path().join("a-file"))?;
-    Ok(dir)
 }
