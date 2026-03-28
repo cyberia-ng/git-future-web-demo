@@ -44,6 +44,13 @@ impl Object {
         let data = dir.read_file(&suffix_buf).await?;
         let data = decompress_to_vec_zlib(&data)?;
 
+        let (_, out) = Object::parser(id)
+            .parse(data.as_ref())
+            .map_err(|_| Error::MalformedObject(id))?;
+        Ok(out)
+    }
+
+    fn parser<'a>(id: ObjectId) -> impl Fn(&'a [u8]) -> nom::IResult<&'a [u8], Object> {
         fn parse_header_body(input: &[u8]) -> nom::IResult<&[u8], (&[u8], &[u8])> {
             let (rest, object_type) = terminated(alpha1, char(' ')).parse(input)?;
             let (rest, expected_len) = terminated(usize, char('\0')).parse(rest)?;
@@ -51,18 +58,16 @@ impl Object {
             Ok((rest, (object_type, body)))
         }
 
-        let (_, (object_type, body)) = all_consuming(parse_header_body)
-            .parse(data.as_ref())
-            .map_err(|_| Error::MalformedObject(id))?;
-
-        let (_, out) = (match object_type {
-            b"commit" => all_consuming(Commit::parser(id))
-                .map(Object::Commit)
-                .parse(body),
-            _ => todo!(),
-        })
-        .map_err(|_| Error::MalformedObject(id))?;
-        Ok(out)
+        move |input: &[u8]| {
+            let (_, (object_type, body)) = all_consuming(parse_header_body).parse(input)?;
+            let (_, out) = match object_type {
+                b"commit" => all_consuming(Commit::parser(id))
+                    .map(Object::Commit)
+                    .parse(body)?,
+                _ => todo!(),
+            };
+            Ok((&input[..0], out))
+        }
     }
 }
 
@@ -99,7 +104,7 @@ impl Commit {
                 ),
             ) = p.parse(input)?;
             Ok((
-                &input[input.len()..],
+                &input[..0],
                 Commit {
                     id,
                     author_name: author_name.to_vec(),
@@ -154,6 +159,51 @@ fn parse_author_committer_line(
 #[cfg(test)]
 mod test {
     use super::*;
+
+    #[test]
+    fn test_parse_root_commit() {
+        let data = b"commit 170\0tree 3a4df67dd7fd7cb3ca82d9896dbdd28053d39bdb
+author a-user <an-email-address> 1774735018 +0530
+committer another-user <another-email-address> 1774735019 -0800
+
+a commit
+";
+        let (rest, object) = Object::parser(ObjectId([0u8; 20])).parse(data).unwrap();
+        assert_eq!(rest, &[]);
+        let commit = match object {
+            Object::Commit(commit) => commit,
+            _ => panic!(),
+        };
+        assert_eq!(
+            commit.tree,
+            ObjectId([
+                0x3a, 0x4d, 0xf6, 0x7d, 0xd7, 0xfd, 0x7c, 0xb3, 0xca, 0x82, 0xd9, 0x89, 0x6d, 0xbd,
+                0xd2, 0x80, 0x53, 0xd3, 0x9b, 0xdb,
+            ])
+        );
+        assert_eq!(str::from_utf8(&commit.author_name).unwrap(), "a-user");
+        assert_eq!(
+            str::from_utf8(&commit.author_email).unwrap(),
+            "an-email-address"
+        );
+        assert_eq!(
+            commit.author_date,
+            DateTime::parse_from_rfc3339("2026-03-29T03:26:58+05:30").unwrap()
+        );
+        assert_eq!(
+            str::from_utf8(&commit.committer_name).unwrap(),
+            "another-user"
+        );
+        assert_eq!(
+            str::from_utf8(&commit.committer_email).unwrap(),
+            "another-email-address"
+        );
+        assert_eq!(
+            commit.commit_date,
+            DateTime::parse_from_rfc3339("2026-03-28T13:56:59-08:00").unwrap()
+        );
+        assert_eq!(str::from_utf8(&commit.message).unwrap(), "a commit\n");
+    }
 
     #[test]
     fn test_parse_author_committer_line() {
