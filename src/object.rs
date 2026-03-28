@@ -165,6 +165,18 @@ mod test {
     use super::*;
 
     #[test]
+    fn test_parse_object_invalid_length() {
+        let data = b"commit 169\0tree 3a4df67dd7fd7cb3ca82d9896dbdd28053d39bdb
+author a-user <an-email-address> 1774735018 +0530
+committer another-user <another-email-address> 1774735019 -0800
+
+a commit
+";
+        let result = Object::parser(ObjectId([0u8; 20])).parse(data);
+        assert!(result.is_err());
+    }
+
+    #[test]
     fn test_parse_root_commit() {
         let data = b"commit 170\0tree 3a4df67dd7fd7cb3ca82d9896dbdd28053d39bdb
 author a-user <an-email-address> 1774735018 +0530
@@ -178,6 +190,7 @@ a commit
             Object::Commit(commit) => commit,
             _ => panic!(),
         };
+        assert_eq!(&commit.parents, &[]);
         assert_eq!(
             commit.tree,
             ObjectId([
@@ -207,6 +220,47 @@ a commit
             DateTime::parse_from_rfc3339("2026-03-28T13:56:59-08:00").unwrap()
         );
         assert_eq!(str::from_utf8(&commit.message).unwrap(), "a commit\n");
+    }
+
+    #[test]
+    fn test_parse_normal_commit() {
+        let data = b"commit 213\0tree 4b825dc642cb6eb9a060e54bf8d69288fbee4904
+parent 16dafd3d0ba5af72f035d641c076a4150eda548d
+author a-user <an-email-address> 1774739676 +0000
+committer a-user <an-email-address> 1774739676 +0000
+
+another commit
+";
+        let (_, object) = Object::parser(ObjectId([0u8; 20])).parse(data).unwrap();
+        let commit = match object {
+            Object::Commit(commit) => commit,
+            _ => panic!(),
+        };
+        assert_eq!(
+            &commit.parents,
+            &[ObjectId([
+                0x16, 0xda, 0xfd, 0x3d, 0x0b, 0xa5, 0xaf, 0x72, 0xf0, 0x35, 0xd6, 0x41, 0xc0, 0x76,
+                0xa4, 0x15, 0x0e, 0xda, 0x54, 0x8d,
+            ])]
+        );
+    }
+
+    #[test]
+    fn test_parse_merge_commit() {
+        let data = b"commit 268\0tree bfb6d701e108f3be27395bd60c3417b47ffbe7d9
+parent f625376d12f2edc71cff70bb42d387ddf2408460
+parent 6904799d30a34bfcf6ca6a3526fc8b771ed6705c
+author a-user <an-email-address> 1774740069 +0000
+committer a-user <an-email-address> 1774740069 +0000
+
+Merge branch 'branch'
+";
+        let (_, object) = Object::parser(ObjectId([0u8; 20])).parse(data).unwrap();
+        let commit = match object {
+            Object::Commit(commit) => commit,
+            _ => panic!(),
+        };
+        assert_eq!(commit.parents.len(), 2);
     }
 
     #[test]
