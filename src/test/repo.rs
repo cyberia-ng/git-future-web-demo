@@ -1,3 +1,7 @@
+use crate::{
+    directory::{Directory, DirectoryError},
+    repo::Repo,
+};
 use std::{
     ffi::OsStr,
     fs::{OpenOptions, read_dir},
@@ -5,14 +9,7 @@ use std::{
     path::{Path, PathBuf},
     process::{Command, Stdio},
 };
-
-use chrono::{DateTime, FixedOffset};
 use tempfile::{TempDir, tempdir};
-
-use crate::{
-    directory::{Directory, DirectoryError},
-    repo::Repo,
-};
 
 #[derive(Debug)]
 pub struct TestRepo {
@@ -27,14 +24,13 @@ pub struct TestRepoDirectory<'r> {
 
 impl TestRepo {
     fn run_git(&self, args: impl IntoIterator<Item = impl AsRef<OsStr>>) -> io::Result<String> {
-        self.run_git_stdin_env(args, &[], Vec::<(&str, &str)>::new())
+        self.run_git_stdin(args, &[])
     }
 
-    fn run_git_stdin_env(
+    fn run_git_stdin(
         &self,
         args: impl IntoIterator<Item = impl AsRef<OsStr>>,
         stdin: &[u8],
-        env: impl IntoIterator<Item = (impl AsRef<OsStr>, impl AsRef<OsStr>)>,
     ) -> io::Result<String> {
         let mut git_process = Command::new("git")
             .stdin(Stdio::piped())
@@ -42,7 +38,6 @@ impl TestRepo {
             .stderr(Stdio::null())
             .args([OsStr::new("-C"), self.location.path().as_ref()])
             .args(args)
-            .envs(env)
             .spawn()?;
         git_process.stdin.take().unwrap().write_all(stdin)?;
         let status = git_process.wait()?;
@@ -60,6 +55,7 @@ impl TestRepo {
         let dir = tempdir()?;
         let repo = TestRepo { location: dir };
         repo.run_git(["init"])?;
+        repo.set_user("a user", "an-email-address")?;
         Ok(repo)
     }
 
@@ -89,28 +85,8 @@ impl TestRepo {
         Ok(())
     }
 
-    pub fn commit(
-        &self,
-        message: &str,
-        author_name: &str,
-        author_email: &str,
-        author_date: DateTime<FixedOffset>,
-        committer_date: DateTime<FixedOffset>,
-    ) -> io::Result<()> {
-        self.run_git_stdin_env(
-            [
-                "commit",
-                "-F",
-                "-",
-                "--author",
-                &format!("{} <{}>", author_name, author_email),
-            ],
-            message.as_bytes(),
-            vec![
-                ("GIT_AUTHOR_DATE", &author_date.to_rfc3339()),
-                ("GIT_COMMITTER_DATE", &committer_date.to_rfc3339()),
-            ],
-        )?;
+    pub fn commit(&self, message: &str) -> io::Result<()> {
+        self.run_git_stdin(["commit", "-F", "-"], message.as_bytes())?;
         Ok(())
     }
 }

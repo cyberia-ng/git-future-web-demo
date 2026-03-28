@@ -30,6 +30,10 @@ impl ObjectId {
 #[derive(Debug)]
 pub enum Object {
     Commit(Commit),
+    Tree,
+    Blob,
+    Tag,
+    // others?
 }
 
 impl Object {

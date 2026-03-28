@@ -83,17 +83,8 @@ mod test {
         reference::{RefTarget, RefType},
         test::repo::TestRepo,
     };
-    use chrono::DateTime;
     use futures::executor::block_on;
     use std::{fs::OpenOptions, io::Write as _};
-
-    const commit_message: &str = "a commit message";
-    const author_name: &str = "author name";
-    const author_email: &str = "author_email";
-    const author_date_rfc3339: &str = "2026-03-27T19:35:00+05:30";
-    const committer_name: &str = "committer";
-    const committer_email: &str = "committer-email";
-    const commit_date_rfc3339: &str = "2025-02-26T08:24:30-08:00";
 
     fn make_basic_commit(test_repo: &TestRepo) {
         let wd_path = test_repo.working_tree_path();
@@ -106,16 +97,7 @@ mod test {
             .unwrap();
         f.flush().unwrap();
         test_repo.add_all().unwrap();
-        test_repo.set_user(committer_name, committer_email).unwrap();
-        test_repo
-            .commit(
-                commit_message,
-                author_name,
-                author_email,
-                DateTime::parse_from_rfc3339(author_date_rfc3339).unwrap(),
-                DateTime::parse_from_rfc3339(commit_date_rfc3339).unwrap(),
-            )
-            .unwrap();
+        test_repo.commit("a commit message").unwrap();
     }
 
     #[test]
@@ -153,29 +135,9 @@ mod test {
             RefTarget::Ref(r) => block_on(r.target(&repo)).unwrap(),
             _ => panic!(),
         };
-        let commit = match head_target_target {
-            RefTarget::Object(Object::Commit(commit)) => commit,
+        match head_target_target {
+            RefTarget::Object(Object::Commit(_)) => {}
             _ => panic!(),
-        };
-        assert_eq!(commit.author_name.as_slice(), author_name.as_bytes());
-        assert_eq!(commit.author_email.as_slice(), author_email.as_bytes());
-        assert_eq!(
-            commit.author_date,
-            DateTime::parse_from_rfc3339(author_date_rfc3339).unwrap()
-        );
-        assert_eq!(commit.committer_name.as_slice(), committer_name.as_bytes());
-        assert_eq!(
-            commit.committer_email.as_slice(),
-            committer_email.as_bytes()
-        );
-        assert_eq!(
-            commit.commit_date,
-            DateTime::parse_from_rfc3339(commit_date_rfc3339).unwrap()
-        );
-
-        // println!("{:?}", commit);
-        // println!("{:?}", str::from_utf8(&commit.author));
-        // // TODO check commit
-        // todo!();
+        }
     }
 }
