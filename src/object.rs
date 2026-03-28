@@ -47,19 +47,22 @@ impl Object {
         fn parse_header_body(input: &[u8]) -> nom::IResult<&[u8], (&[u8], &[u8])> {
             let (rest, object_type) = terminated(alpha1, char(' ')).parse(input)?;
             let (rest, expected_len) = terminated(usize, char('\0')).parse(rest)?;
-            let (rest, body) = all_consuming(take(expected_len)).parse(rest)?;
+            let (rest, body) = take(expected_len).parse(rest)?;
             Ok((rest, (object_type, body)))
         }
-        let (_, (object_type, body)) = parse_header_body
+
+        let (_, (object_type, body)) = all_consuming(parse_header_body)
             .parse(data.as_ref())
             .map_err(|_| Error::MalformedObject(id))?;
 
-        match object_type {
-            b"commit" => Ok(Object::Commit(
-                Commit::from_bytes(id, body).ok_or_else(|| Error::MalformedObject(id))?,
-            )),
+        let (_, out) = (match object_type {
+            b"commit" => all_consuming(Commit::parser(id))
+                .map(Object::Commit)
+                .parse(body),
             _ => todo!(),
-        }
+        })
+        .map_err(|_| Error::MalformedObject(id))?;
+        Ok(out)
     }
 }
 
@@ -78,35 +81,39 @@ pub struct Commit {
 }
 
 impl Commit {
-    fn from_bytes(id: ObjectId, body: &[u8]) -> Option<Self> {
-        let mut p = (
-            delimited(tag("tree "), parse_object_id, char('\n')),
-            many(0.., delimited(tag("parent "), parse_object_id, char('\n'))),
-            delimited(tag("author "), parse_author_committer_line, char('\n')),
-            delimited(tag("committer "), parse_author_committer_line, tag("\n\n")),
-        );
-        let (
-            message,
-            (
-                tree_id,
-                parents,
-                (author_name, author_email, author_date),
-                (committer_name, committer_email, commit_date),
-            ),
-        ) = p.parse_complete(body).ok()?;
-
-        Some(Commit {
-            id,
-            author_name: author_name.to_vec(),
-            author_email: author_email.to_vec(),
-            author_date,
-            committer_name: committer_name.to_vec(),
-            committer_email: committer_email.to_vec(),
-            commit_date,
-            tree: tree_id,
-            parents,
-            message: message.to_vec(),
-        })
+    fn parser<'a>(id: ObjectId) -> impl Fn(&'a [u8]) -> nom::IResult<&'a [u8], Commit> {
+        move |input| {
+            let mut p = (
+                delimited(tag("tree "), parse_object_id, char('\n')),
+                many(0.., delimited(tag("parent "), parse_object_id, char('\n'))),
+                delimited(tag("author "), parse_author_committer_line, char('\n')),
+                delimited(tag("committer "), parse_author_committer_line, tag("\n\n")),
+            );
+            let (
+                message,
+                (
+                    tree_id,
+                    parents,
+                    (author_name, author_email, author_date),
+                    (committer_name, committer_email, commit_date),
+                ),
+            ) = p.parse(input)?;
+            Ok((
+                &input[input.len()..],
+                Commit {
+                    id,
+                    author_name: author_name.to_vec(),
+                    author_email: author_email.to_vec(),
+                    author_date,
+                    committer_name: committer_name.to_vec(),
+                    committer_email: committer_email.to_vec(),
+                    commit_date,
+                    tree: tree_id,
+                    parents,
+                    message: message.to_vec(),
+                },
+            ))
+        }
     }
 }
 
@@ -121,6 +128,7 @@ fn parse_object_id(input: &[u8]) -> nom::IResult<&[u8], ObjectId> {
         .parse(input)
 }
 
+#[allow(clippy::type_complexity)]
 fn parse_author_committer_line(
     input: &[u8],
 ) -> nom::IResult<&[u8], (&[u8], &[u8], DateTime<FixedOffset>)> {
