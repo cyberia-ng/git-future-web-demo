@@ -66,8 +66,8 @@ impl Object {
 
     fn parser<'a>(id: ObjectId) -> impl Fn(&'a [u8]) -> nom::IResult<&'a [u8], Object> {
         fn parse_header_body(input: &[u8]) -> nom::IResult<&[u8], (&[u8], &[u8])> {
-            let (rest, object_type) = terminated(alpha1, char(' ')).parse(input)?;
-            let (rest, expected_len) = terminated(usize, char('\0')).parse(rest)?;
+            let (rest, (object_type, expected_len)) =
+                (terminated(alpha1, char(' ')), terminated(usize, char('\0'))).parse(input)?;
             let (rest, body) = take(expected_len).parse(rest)?;
             Ok((rest, (object_type, body)))
         }
@@ -118,7 +118,7 @@ impl Commit {
                 ),
             ) = p.parse(input)?;
             Ok((
-                &input[..0],
+                &[][..],
                 Commit {
                     id,
                     author_name: author_name.to_vec(),
