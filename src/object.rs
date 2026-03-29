@@ -103,8 +103,8 @@ impl Commit {
     fn parser<'a>(id: ObjectId) -> impl Fn(&'a [u8]) -> nom::IResult<&'a [u8], Commit> {
         move |input| {
             let mut p = (
-                delimited(tag("tree "), parse_object_id, char('\n')),
-                many(0.., delimited(tag("parent "), parse_object_id, char('\n'))),
+                delimited(tag("tree "), ObjectId::parse, char('\n')),
+                many(0.., delimited(tag("parent "), ObjectId::parse, char('\n'))),
                 delimited(tag("author "), parse_author_committer_line, char('\n')),
                 delimited(tag("committer "), parse_author_committer_line, tag("\n\n")),
             );
@@ -134,17 +134,6 @@ impl Commit {
             ))
         }
     }
-}
-
-fn parse_object_id(input: &[u8]) -> nom::IResult<&[u8], ObjectId> {
-    take(40usize)
-        .and_then(hex_digit0)
-        .map_res(|hex_chars| -> Result<ObjectId, hex::FromHexError> {
-            let mut out = ObjectId([0u8; 20]);
-            hex::decode_to_slice(hex_chars, &mut out.0)?;
-            Ok(out)
-        })
-        .parse(input)
 }
 
 #[allow(clippy::type_complexity)]
