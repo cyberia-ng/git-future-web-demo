@@ -1,7 +1,7 @@
 use crate::{
     directory::Directory,
     error::{Error, GResult},
-    object::ObjectId,
+    object::{Object, ObjectId},
     repo::Repo,
 };
 use alloc::vec::Vec;
@@ -22,7 +22,7 @@ pub enum RefName {
     Head,
 }
 
-#[derive(Debug, PartialEq, Eq)]
+#[derive(Debug, PartialEq, Eq, Clone)]
 pub enum Ref {
     Direct(ObjectId),
     Symbolic(RefName),
@@ -55,6 +55,18 @@ impl Ref {
             RefName::Tag(_) => todo!(),
             RefName::Remote(_) => todo!(),
         }
+    }
+
+    pub async fn resolve_to_object<D: Directory>(&self, repo: &Repo<D>) -> GResult<Object> {
+        let mut target = self.clone();
+        while let Ref::Symbolic(name) = target {
+            target = Ref::lookup(repo, &name).await?;
+        }
+        let oid = match target {
+            Ref::Symbolic(_) => unreachable!(),
+            Ref::Direct(oid) => oid,
+        };
+        Object::lookup(repo, oid).await
     }
 
     pub(crate) fn parse(content: &[u8]) -> nom::IResult<&[u8], Self> {
@@ -107,23 +119,19 @@ mod test {
     }
 
     #[test]
-    fn resolve_head_twice() {
-        // i.e. get to the commit
+    fn resolve_head_to_commit() {
         let test_repo = TestRepo::new().unwrap();
         make_basic_commit(&test_repo);
 
         let repo = test_repo.repo();
         let head = block_on(repo.head()).unwrap();
-        let head_target = match head {
-            Ref::Direct(_) => panic!(),
-            Ref::Symbolic(name) => name,
-        };
-        let head_target_target = block_on(Ref::lookup(&repo, &head_target)).unwrap();
-        let oid = match head_target_target {
-            Ref::Symbolic(_) => panic!(),
-            Ref::Direct(oid) => oid,
-        };
-        block_on(Object::lookup(&repo, oid)).unwrap();
+        let object = block_on(head.resolve_to_object(&repo)).unwrap();
+        match object {
+            Object::Commit(_) => {
+                // Happy
+            }
+            _ => panic!(),
+        }
     }
 
     #[test]
