@@ -11,6 +11,7 @@ pub enum Error {
     DecompressError(DecompressError),
 
     MalformedObject(ObjectId),
+    MalformedRef(RefPath),
     FromHexError(hex::FromHexError),
 }
 
@@ -30,4 +31,10 @@ impl From<hex::FromHexError> for Error {
     fn from(value: hex::FromHexError) -> Self {
         Self::FromHexError(value)
     }
+}
+
+#[derive(Debug)]
+pub enum RefPath {
+    Head,
+    Ref(Vec<u8>),
 }

@@ -17,17 +17,27 @@ use nom::{
 };
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
-pub struct ObjectId([u8; 20]);
+pub struct ObjectId(pub [u8; 20]);
 
 impl ObjectId {
-    pub fn from_encoded(s: &[u8]) -> GResult<Self> {
-        let mut buf = [0u8; 20];
-        hex::decode_to_slice(s.trim_ascii(), &mut buf)?;
-        Ok(ObjectId(buf))
+    pub(crate) fn parse(input: &[u8]) -> nom::IResult<&[u8], Self> {
+        take(40usize)
+            .and_then(all_consuming(hex_digit0))
+            .map_res(|hex_str| {
+                let mut buf = [0u8; 20];
+                hex::decode_to_slice(hex_str, &mut buf)?;
+                Ok::<ObjectId, hex::FromHexError>(ObjectId(buf))
+            })
+            .parse(input)
+    }
+
+    pub fn from_encoded(s: &[u8]) -> Option<Self> {
+        let (_, oid) = all_consuming(Self::parse).parse(s).ok()?;
+        Some(oid)
     }
 }
 
-#[derive(Debug)]
+#[derive(Debug, PartialEq, Eq)]
 pub enum Object {
     Commit(Commit),
     Tree,
@@ -70,12 +80,12 @@ impl Object {
                     .parse(body)?,
                 _ => todo!(),
             };
-            Ok((&input[..0], out))
+            Ok((&[][..], out))
         }
     }
 }
 
-#[derive(Debug)]
+#[derive(Debug, PartialEq, Eq)]
 pub struct Commit {
     pub id: ObjectId,
     pub author_name: Vec<u8>,

@@ -1,58 +1,46 @@
 use crate::{
     directory::Directory,
-    error::{Error, GResult},
+    error::{Error, GResult, RefPath},
     object::{Object, ObjectId},
     repo::Repo,
 };
 use alloc::vec::Vec;
-
-#[derive(Debug)]
-pub struct Ref {
-    inner: RefType,
-}
+use nom::{
+    Parser,
+    branch::alt,
+    bytes::complete::tag,
+    character::complete::{newline, not_line_ending},
+    combinator::all_consuming,
+    sequence::{preceded, terminated},
+};
 
 #[derive(Debug, PartialEq, Eq)]
-pub enum RefType {
+pub enum Ref {
     Direct(ObjectId),
     Symbolic(Vec<u8>),
 }
 
-#[derive(Debug)]
+#[derive(Debug, PartialEq, Eq)]
 pub enum RefTarget {
     Ref(Ref),
     Object(Object),
 }
 
 impl Ref {
-    pub const fn direct(oid: ObjectId) -> Self {
-        Ref {
-            inner: RefType::Direct(oid),
-        }
-    }
-
-    pub const fn symbolic(target: Vec<u8>) -> Self {
-        Ref {
-            inner: RefType::Symbolic(target),
-        }
-    }
-
-    pub(crate) fn from_content(content: &[u8]) -> GResult<Self> {
-        if let Some(target) = content.strip_prefix(b"ref: refs/") {
-            let target = target.trim_ascii_end().to_vec();
-            Ok(Ref::symbolic(target))
-        } else {
-            let oid = ObjectId::from_encoded(content)?;
-            Ok(Ref::direct(oid))
-        }
-    }
-
-    pub fn ref_type(&self) -> &RefType {
-        &self.inner
+    pub(crate) fn parse(content: &[u8]) -> nom::IResult<&[u8], Self> {
+        all_consuming(terminated(not_line_ending, newline))
+            .and_then(alt((
+                ObjectId::parse.map(Ref::Direct),
+                preceded(tag(&b"ref: refs/"[..]), |input: &[u8]| {
+                    Ok((&[][..], Ref::Symbolic(input.to_vec())))
+                }),
+            )))
+            .parse(content)
     }
 
     pub async fn target<D: Directory>(&self, repo: &Repo<D>) -> GResult<RefTarget> {
-        use RefType::*;
-        match &self.inner {
+        use Ref::*;
+        match &self {
             Symbolic(s) => {
                 let mut path_components = s.split(|b| *b == b'/');
                 let file_name = path_components
@@ -63,7 +51,8 @@ impl Ref {
                     dir = dir.open_subdir(component).await?;
                 }
                 let file_content = dir.read_file(file_name).await?;
-                let reference = Self::from_content(&file_content)?;
+                let (_, reference) = Self::parse(&file_content)
+                    .map_err(|_| Error::MalformedRef(RefPath::Ref(s.to_vec())))?;
                 Ok(RefTarget::Ref(reference))
             }
             Direct(oid) => {
@@ -79,8 +68,8 @@ mod test {
     #![allow(non_upper_case_globals)]
 
     use crate::{
-        object::Object,
-        reference::{RefTarget, RefType},
+        object::{Object, ObjectId},
+        reference::{Ref, RefTarget},
         test::repo::TestRepo,
     };
     use futures::executor::block_on;
@@ -110,11 +99,10 @@ mod test {
         let head_target = block_on(head.target(&repo)).unwrap();
         match head_target {
             RefTarget::Object(_) => panic!(),
-            RefTarget::Ref(r) => {
-                let ref_type = r.ref_type();
-                match ref_type {
-                    RefType::Symbolic(_) => panic!(),
-                    RefType::Direct(_) => {
+            RefTarget::Ref(reference) => {
+                match reference {
+                    Ref::Symbolic(_) => panic!(),
+                    Ref::Direct(_) => {
                         // Happy
                     }
                 }
@@ -139,5 +127,25 @@ mod test {
             RefTarget::Object(Object::Commit(_)) => {}
             _ => panic!(),
         }
+    }
+
+    #[test]
+    fn parse_direct_ref() {
+        let content = b"6121d0b97779278fcc32cc8a02754e7c588d9c18\n";
+        let (_, parsed) = Ref::parse(content).unwrap();
+        assert_eq!(
+            parsed,
+            Ref::Direct(ObjectId([
+                0x61, 0x21, 0xd0, 0xb9, 0x77, 0x79, 0x27, 0x8f, 0xcc, 0x32, 0xcc, 0x8a, 0x02, 0x75,
+                0x4e, 0x7c, 0x58, 0x8d, 0x9c, 0x18,
+            ]))
+        );
+    }
+
+    #[test]
+    fn parse_symbolic_ref() {
+        let content = b"ref: refs/heads/main\n";
+        let (_, parsed) = Ref::parse(content).unwrap();
+        assert_eq!(parsed, Ref::Symbolic(b"heads/main".to_vec()));
     }
 }
