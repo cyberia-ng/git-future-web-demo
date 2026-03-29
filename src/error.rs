@@ -1,4 +1,4 @@
-use crate::{directory::DirectoryError, object::ObjectId};
+use crate::{directory::DirectoryError, object::ObjectId, reference::RefName};
 use alloc::vec::Vec;
 use miniz_oxide::inflate::DecompressError;
 
@@ -11,7 +11,7 @@ pub enum Error {
     DecompressError(DecompressError),
 
     MalformedObject(ObjectId),
-    MalformedRef(RefPath),
+    MalformedRef(RefName),
     FromHexError(hex::FromHexError),
 }
 
@@ -31,10 +31,4 @@ impl From<hex::FromHexError> for Error {
     fn from(value: hex::FromHexError) -> Self {
         Self::FromHexError(value)
     }
-}
-
-#[derive(Debug)]
-pub enum RefPath {
-    Head,
-    Ref(Vec<u8>),
 }

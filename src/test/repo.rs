@@ -23,15 +23,18 @@ pub struct TestRepoDirectory<'r> {
 }
 
 impl TestRepo {
-    fn run_git(&self, args: impl IntoIterator<Item = impl AsRef<OsStr>>) -> io::Result<String> {
+    pub fn run_git(
+        &self,
+        args: impl IntoIterator<Item = impl AsRef<OsStr>>,
+    ) -> io::Result<Vec<u8>> {
         self.run_git_stdin(args, &[])
     }
 
-    fn run_git_stdin(
+    pub fn run_git_stdin(
         &self,
         args: impl IntoIterator<Item = impl AsRef<OsStr>>,
         stdin: &[u8],
-    ) -> io::Result<String> {
+    ) -> io::Result<Vec<u8>> {
         let mut git_process = Command::new("git")
             .stdin(Stdio::piped())
             .stdout(Stdio::piped())
@@ -48,7 +51,7 @@ impl TestRepo {
             .take()
             .unwrap()
             .read_to_end(&mut output)?;
-        Ok(String::from_utf8(output).unwrap())
+        Ok(output)
     }
 
     pub fn new() -> io::Result<Self> {
@@ -79,16 +82,6 @@ impl TestRepo {
     pub fn repo(&self) -> Repo<TestRepoDirectory<'_>> {
         Repo::new(self.git_dir())
     }
-
-    pub fn add_all(&self) -> io::Result<()> {
-        self.run_git(["add", "--all"])?;
-        Ok(())
-    }
-
-    pub fn commit(&self, message: &str) -> io::Result<()> {
-        self.run_git_stdin(["commit", "-F", "-"], message.as_bytes())?;
-        Ok(())
-    }
 }
 
 impl<'r> Directory for TestRepoDirectory<'r> {
@@ -100,7 +93,7 @@ impl<'r> Directory for TestRepoDirectory<'r> {
         })
     }
 
-    async fn list_dir(&self) -> Result<Vec<String>, DirectoryError> {
+    async fn list_dir(&self) -> Result<Vec<Vec<u8>>, DirectoryError> {
         let dir = read_dir(self.repo.location.path().join(&self.sub_path)).unwrap();
         let entries = dir
             .map_while(|entry| {
@@ -110,7 +103,7 @@ impl<'r> Directory for TestRepoDirectory<'r> {
                     None
                 }
             })
-            .map(|file_name| file_name.to_str().unwrap().to_owned())
+            .map(|file_name| file_name.to_owned().into_encoded_bytes())
             .collect::<Vec<_>>();
         Ok(entries)
     }
@@ -130,4 +123,20 @@ impl<'r> Directory for TestRepoDirectory<'r> {
         file.read_to_end(&mut out).unwrap();
         Ok(out)
     }
+}
+
+pub fn make_basic_commit(test_repo: &TestRepo) {
+    let wd_path = test_repo.working_tree_path();
+    let mut file_path = wd_path.to_path_buf();
+    file_path.push("a-file");
+    let mut f = OpenOptions::new()
+        .write(true)
+        .create_new(true)
+        .open(&file_path)
+        .unwrap();
+    f.flush().unwrap();
+    test_repo.run_git(["add", "--all"]).unwrap();
+    test_repo
+        .run_git(["commit", "-m", "a commit message"])
+        .unwrap();
 }

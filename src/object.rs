@@ -172,7 +172,29 @@ fn parse_author_committer_line(
 
 #[cfg(test)]
 mod test {
+    use futures::executor::block_on;
+
     use super::*;
+    use crate::test::repo::{TestRepo, make_basic_commit};
+
+    #[test]
+    fn lookup_commit() {
+        let test_repo = TestRepo::new().unwrap();
+        make_basic_commit(&test_repo);
+        let commit_id = test_repo.run_git(["rev-parse", "HEAD"]).unwrap();
+        let commit_id = ObjectId::from_encoded(commit_id.trim_ascii()).unwrap();
+
+        let repo = test_repo.repo();
+        let object = block_on(Object::lookup(&repo, commit_id)).unwrap();
+        match object {
+            Object::Commit(commit) => {
+                assert_eq!(commit.id, commit_id);
+            }
+            Object::Tree => panic!(),
+            Object::Blob => panic!(),
+            Object::Tag => panic!(),
+        }
+    }
 
     #[test]
     fn test_parse_object_invalid_length() {

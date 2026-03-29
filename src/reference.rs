@@ -1,65 +1,77 @@
 use crate::{
     directory::Directory,
-    error::{Error, GResult, RefPath},
-    object::{Object, ObjectId},
+    error::{Error, GResult},
+    object::ObjectId,
     repo::Repo,
 };
 use alloc::vec::Vec;
 use nom::{
     Parser,
     branch::alt,
-    bytes::complete::tag,
+    bytes::complete::{tag, take_till},
     character::complete::{newline, not_line_ending},
     combinator::all_consuming,
     sequence::{preceded, terminated},
 };
 
+#[derive(Debug, PartialEq, Eq, PartialOrd, Ord, Clone)]
+pub enum RefName {
+    Branch(Vec<u8>),
+    Tag(Vec<u8>),
+    Remote(Vec<u8>),
+    Head,
+}
+
 #[derive(Debug, PartialEq, Eq)]
 pub enum Ref {
     Direct(ObjectId),
-    Symbolic(Vec<u8>),
-}
-
-#[derive(Debug, PartialEq, Eq)]
-pub enum RefTarget {
-    Ref(Ref),
-    Object(Object),
+    Symbolic(RefName),
 }
 
 impl Ref {
-    pub(crate) fn parse(content: &[u8]) -> nom::IResult<&[u8], Self> {
-        all_consuming(terminated(not_line_ending, newline))
-            .and_then(alt((
-                ObjectId::parse.map(Ref::Direct),
-                preceded(tag(&b"ref: refs/"[..]), |input: &[u8]| {
-                    Ok((&[][..], Ref::Symbolic(input.to_vec())))
-                }),
-            )))
-            .parse(content)
-    }
-
-    pub async fn target<D: Directory>(&self, repo: &Repo<D>) -> GResult<RefTarget> {
-        use Ref::*;
-        match &self {
-            Symbolic(s) => {
-                let mut path_components = s.split(|b| *b == b'/');
+    pub async fn lookup<D: Directory>(repo: &Repo<D>, name: &RefName) -> GResult<Ref> {
+        match name {
+            RefName::Head => {
+                let ref_content = repo.git_dir.read_file(b"HEAD").await?;
+                let (_, reference) =
+                    Ref::parse(&ref_content).map_err(|_| Error::MalformedRef(name.clone()))?;
+                Ok(reference)
+            }
+            RefName::Branch(branch_name) => {
+                let mut path_components = branch_name.split(|b| *b == b'/');
                 let file_name = path_components
                     .next_back()
-                    .ok_or(Error::PathError(s.clone()))?;
+                    .ok_or(Error::PathError(branch_name.clone()))?;
                 let mut dir = repo.git_dir.open_subdir(b"refs").await?;
+                dir = dir.open_subdir(b"heads").await?;
                 for component in path_components {
                     dir = dir.open_subdir(component).await?;
                 }
                 let file_content = dir.read_file(file_name).await?;
-                let (_, reference) = Self::parse(&file_content)
-                    .map_err(|_| Error::MalformedRef(RefPath::Ref(s.to_vec())))?;
-                Ok(RefTarget::Ref(reference))
+                let (_, reference) =
+                    Self::parse(&file_content).map_err(|_| Error::MalformedRef(name.clone()))?;
+                Ok(reference)
             }
-            Direct(oid) => {
-                let object = Object::lookup(repo, *oid).await?;
-                Ok(RefTarget::Object(object))
-            }
+            RefName::Tag(_) => todo!(),
+            RefName::Remote(_) => todo!(),
         }
+    }
+
+    pub(crate) fn parse(content: &[u8]) -> nom::IResult<&[u8], Self> {
+        all_consuming(terminated(not_line_ending, newline))
+            .and_then(alt((
+                ObjectId::parse.map(Ref::Direct),
+                preceded(
+                    tag("ref: refs/"),
+                    alt((
+                        preceded(tag("heads/"), take_till(|_| false))
+                            .map(|name: &[u8]| Ref::Symbolic(RefName::Branch(name.to_vec()))),
+                        preceded(tag("tags/"), take_till(|_| false)).map(|_| todo!()),
+                        preceded(tag("remotes/"), take_till(|_| false)).map(|_| todo!()),
+                    )),
+                ),
+            )))
+            .parse(content)
     }
 }
 
@@ -69,25 +81,10 @@ mod test {
 
     use crate::{
         object::{Object, ObjectId},
-        reference::{Ref, RefTarget},
-        test::repo::TestRepo,
+        reference::{Ref, RefName},
+        test::repo::{TestRepo, make_basic_commit},
     };
     use futures::executor::block_on;
-    use std::{fs::OpenOptions, io::Write as _};
-
-    fn make_basic_commit(test_repo: &TestRepo) {
-        let wd_path = test_repo.working_tree_path();
-        let mut file_path = wd_path.to_path_buf();
-        file_path.push("a-file");
-        let mut f = OpenOptions::new()
-            .write(true)
-            .create_new(true)
-            .open(&file_path)
-            .unwrap();
-        f.flush().unwrap();
-        test_repo.add_all().unwrap();
-        test_repo.commit("a commit message").unwrap();
-    }
 
     #[test]
     fn resolve_head() {
@@ -96,16 +93,15 @@ mod test {
 
         let repo = test_repo.repo();
         let head = block_on(repo.head()).unwrap();
-        let head_target = block_on(head.target(&repo)).unwrap();
+        let head_target = match head {
+            Ref::Direct(_) => panic!(),
+            Ref::Symbolic(name) => name,
+        };
+        let head_target = block_on(Ref::lookup(&repo, &head_target)).unwrap();
         match head_target {
-            RefTarget::Object(_) => panic!(),
-            RefTarget::Ref(reference) => {
-                match reference {
-                    Ref::Symbolic(_) => panic!(),
-                    Ref::Direct(_) => {
-                        // Happy
-                    }
-                }
+            Ref::Symbolic(_) => panic!(),
+            Ref::Direct(_) => {
+                // Happy
             }
         }
     }
@@ -118,15 +114,16 @@ mod test {
 
         let repo = test_repo.repo();
         let head = block_on(repo.head()).unwrap();
-        let head_target = block_on(head.target(&repo)).unwrap();
-        let head_target_target = match head_target {
-            RefTarget::Ref(r) => block_on(r.target(&repo)).unwrap(),
-            _ => panic!(),
+        let head_target = match head {
+            Ref::Direct(_) => panic!(),
+            Ref::Symbolic(name) => name,
         };
-        match head_target_target {
-            RefTarget::Object(Object::Commit(_)) => {}
-            _ => panic!(),
-        }
+        let head_target_target = block_on(Ref::lookup(&repo, &head_target)).unwrap();
+        let oid = match head_target_target {
+            Ref::Symbolic(_) => panic!(),
+            Ref::Direct(oid) => oid,
+        };
+        block_on(Object::lookup(&repo, oid)).unwrap();
     }
 
     #[test]
@@ -146,6 +143,6 @@ mod test {
     fn parse_symbolic_ref() {
         let content = b"ref: refs/heads/main\n";
         let (_, parsed) = Ref::parse(content).unwrap();
-        assert_eq!(parsed, Ref::Symbolic(b"heads/main".to_vec()));
+        assert_eq!(parsed, Ref::Symbolic(RefName::Branch(b"main".to_vec())));
     }
 }
