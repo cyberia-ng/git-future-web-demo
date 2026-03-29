@@ -26,10 +26,7 @@ impl<D: Directory> Repo<D> {
         let refs_dir = self.git_dir.open_subdir(b"refs").await?;
         let heads_dir = refs_dir.open_subdir(b"heads").await?;
         let branch_names = heads_dir.list_dir().await?;
-        Ok(branch_names
-            .into_iter()
-            .map(RefName::Branch)
-            .collect())
+        Ok(branch_names.into_iter().map(RefName::Branch).collect())
     }
 }
 

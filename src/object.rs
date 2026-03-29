@@ -9,8 +9,8 @@ use miniz_oxide::inflate::decompress_to_vec_zlib;
 use nom::{
     Parser,
     branch::alt,
-    bytes::complete::{tag, take, take_until},
-    character::complete::{alpha1, char, hex_digit0, i32, i64, usize},
+    bytes::complete::{tag, take, take_till, take_until},
+    character::complete::{alpha1, char, hex_digit0, i32, i64, newline, usize},
     combinator::all_consuming,
     multi::many,
     sequence::{delimited, terminated},
@@ -40,9 +40,9 @@ impl ObjectId {
 #[derive(Debug, PartialEq, Eq)]
 pub enum Object {
     Commit(Commit),
+    Tag(Tag),
     Tree,
     Blob,
-    Tag,
     // others?
 }
 
@@ -78,6 +78,9 @@ impl Object {
                 b"commit" => all_consuming(Commit::parser(id))
                     .map(Object::Commit)
                     .parse(body)?,
+                b"tag" => all_consuming(Tag::parser(id))
+                    .map(Object::Tag)
+                    .parse(body)?,
                 _ => todo!(),
             };
             Ok((&[][..], out))
@@ -100,13 +103,17 @@ pub struct Commit {
 }
 
 impl Commit {
-    fn parser<'a>(id: ObjectId) -> impl Fn(&'a [u8]) -> nom::IResult<&'a [u8], Commit> {
+    fn parser<'a>(id: ObjectId) -> impl Fn(&'a [u8]) -> nom::IResult<&'a [u8], Self> {
         move |input| {
             let mut p = (
-                delimited(tag("tree "), ObjectId::parse, char('\n')),
-                many(0.., delimited(tag("parent "), ObjectId::parse, char('\n'))),
-                delimited(tag("author "), parse_author_committer_line, char('\n')),
-                delimited(tag("committer "), parse_author_committer_line, tag("\n\n")),
+                delimited(tag("tree "), ObjectId::parse, newline),
+                many(0.., delimited(tag("parent "), ObjectId::parse, newline)),
+                delimited(tag("author "), parse_author_committer_tagger, newline),
+                delimited(
+                    tag("committer "),
+                    parse_author_committer_tagger,
+                    tag("\n\n"),
+                ),
             );
             let (
                 message,
@@ -136,8 +143,65 @@ impl Commit {
     }
 }
 
+#[derive(Debug, PartialEq, Eq)]
+pub enum TagType {
+    Commit,
+    Blob,
+    Tree,
+    Tag,
+}
+
+#[derive(Debug, PartialEq, Eq)]
+pub struct Tag {
+    pub id: ObjectId,
+    pub object: ObjectId,
+    pub tag_type: TagType,
+    pub tag: Vec<u8>,
+    pub tagger_name: Vec<u8>,
+    pub tagger_email: Vec<u8>,
+    pub tag_date: DateTime<FixedOffset>,
+    pub message: Vec<u8>,
+}
+
+impl Tag {
+    fn parser<'a>(id: ObjectId) -> impl Fn(&'a [u8]) -> nom::IResult<&'a [u8], Self> {
+        move |input| {
+            let mut p = (
+                delimited(tag("object "), ObjectId::parse, newline),
+                delimited(
+                    tag("type "),
+                    alt((
+                        tag("commit").map(|_| TagType::Commit),
+                        tag("blob").map(|_| TagType::Blob),
+                        tag("tree").map(|_| TagType::Tree),
+                        tag("tag").map(|_| TagType::Tag),
+                    )),
+                    newline,
+                ),
+                delimited(tag("tag "), take_till(|c| c == b'\n'), newline),
+                delimited(tag("tagger "), parse_author_committer_tagger, tag("\n\n")),
+            );
+            let (message, (object, tag_type, tag, (tagger_name, tagger_email, tag_date))) =
+                p.parse(input)?;
+            Ok((
+                &[][..],
+                Tag {
+                    id,
+                    object,
+                    tag_type,
+                    tag: tag.to_vec(),
+                    tagger_name: tagger_name.to_vec(),
+                    tagger_email: tagger_email.to_vec(),
+                    tag_date,
+                    message: message.to_vec(),
+                },
+            ))
+        }
+    }
+}
+
 #[allow(clippy::type_complexity)]
-fn parse_author_committer_line(
+fn parse_author_committer_tagger(
     input: &[u8],
 ) -> nom::IResult<&[u8], (&[u8], &[u8], DateTime<FixedOffset>)> {
     (
@@ -179,9 +243,9 @@ mod test {
             Object::Commit(commit) => {
                 assert_eq!(commit.id, commit_id);
             }
+            Object::Tag(_) => panic!(),
             Object::Tree => panic!(),
             Object::Blob => panic!(),
-            Object::Tag => panic!(),
         }
     }
 
@@ -287,6 +351,89 @@ Merge branch 'branch'
     #[test]
     fn test_parse_author_committer_line() {
         let example = "an author <an-email-address> 0 +0000";
-        parse_author_committer_line(example.as_bytes()).unwrap();
+        parse_author_committer_tagger(example.as_bytes()).unwrap();
+    }
+
+    #[test]
+    fn parse_commit_tag() {
+        let data = b"tag 139\0object eedeffb6da16ddc3fb61b2255a8259cacc045691
+type commit
+tag annotated-tag
+tagger a-user <an-email-address> 1774822895 +0100
+
+a message
+";
+        let (_, object) = Object::parser(ObjectId([0u8; 20])).parse(data).unwrap();
+        let tag = match object {
+            Object::Tag(tag) => tag,
+            _ => panic!(),
+        };
+        assert_eq!(
+            tag.object,
+            ObjectId([
+                0xee, 0xde, 0xff, 0xb6, 0xda, 0x16, 0xdd, 0xc3, 0xfb, 0x61, 0xb2, 0x25, 0x5a, 0x82,
+                0x59, 0xca, 0xcc, 0x04, 0x56, 0x91,
+            ])
+        );
+        assert_eq!(tag.tag_type, TagType::Commit);
+        assert_eq!(tag.tag, b"annotated-tag");
+        assert_eq!(tag.tagger_name, b"a-user");
+        assert_eq!(tag.tagger_email, b"an-email-address");
+        assert_eq!(
+            tag.tag_date,
+            DateTime::parse_from_rfc3339("2026-03-29T23:21:35+01:00").unwrap()
+        );
+        assert_eq!(&tag.message, b"a message\n");
+    }
+
+    #[test]
+    fn parse_blob_tag() {
+        let data = b"tag 129\0object e69de29bb2d1d6434b8b29ae775ad8c2e48c5391
+type blob
+tag blob-tag
+tagger a-user <an-email-address> 1774826002 +0100
+
+a blob
+";
+        let (_, object) = Object::parser(ObjectId([0u8; 20])).parse(data).unwrap();
+        let tag = match object {
+            Object::Tag(tag) => tag,
+            _ => panic!(),
+        };
+        assert_eq!(tag.tag_type, TagType::Blob);
+    }
+
+    #[test]
+    fn parse_tree_tag() {
+        let data = b"tag 129\0object 3a4df67dd7fd7cb3ca82d9896dbdd28053d39bdb
+type tree
+tag tree-tag
+tagger a-user <an-email-address> 1774826187 +0100
+
+a tree
+";
+        let (_, object) = Object::parser(ObjectId([0u8; 20])).parse(data).unwrap();
+        let tag = match object {
+            Object::Tag(tag) => tag,
+            _ => panic!(),
+        };
+        assert_eq!(tag.tag_type, TagType::Tree);
+    }
+
+    #[test]
+    fn parse_nested_tag() {
+        let data = b"tag 126\0object 1c8bf8368bc9b1fd14227c6c1a0b0f30a1812e70
+type tag
+tag tag-tag
+tagger a-user <an-email-address> 1774826312 +0100
+
+a tag
+";
+        let (_, object) = Object::parser(ObjectId([0u8; 20])).parse(data).unwrap();
+        let tag = match object {
+            Object::Tag(tag) => tag,
+            _ => panic!(),
+        };
+        assert_eq!(tag.tag_type, TagType::Tag);
     }
 }
