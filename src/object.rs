@@ -41,9 +41,8 @@ impl ObjectId {
 pub enum Object {
     Commit(Commit),
     Tag(Tag),
-    Tree,
+    Tree(Tree),
     Blob,
-    // others?
 }
 
 impl Object {
@@ -80,6 +79,9 @@ impl Object {
                     .parse(body)?,
                 b"tag" => all_consuming(Tag::parser(id))
                     .map(Object::Tag)
+                    .parse(body)?,
+                b"tree" => all_consuming(Tree::parser(id))
+                    .map(Object::Tree)
                     .parse(body)?,
                 _ => todo!(),
             };
@@ -223,12 +225,70 @@ fn parse_author_committer_tagger(
         .parse(input)
 }
 
+#[derive(Debug, PartialEq, Eq)]
+pub enum TreeEntryType {
+    File,
+    Executable,
+    Symlink,
+    Tree,
+}
+
+#[derive(Debug, PartialEq, Eq)]
+pub struct TreeEntry {
+    pub name: Vec<u8>,
+    pub entry_type: TreeEntryType,
+    pub id: ObjectId,
+}
+
+#[derive(Debug, PartialEq, Eq)]
+pub struct Tree {
+    pub id: ObjectId,
+    pub entries: Vec<TreeEntry>,
+}
+
+impl TreeEntry {
+    fn parser(input: &[u8]) -> nom::IResult<&[u8], Self> {
+        let entry_type_parser = alt((
+            tag("40000").map(|_| TreeEntryType::Tree),
+            tag("100644").map(|_| TreeEntryType::File),
+            tag("100755").map(|_| TreeEntryType::Executable),
+            tag("120000").map(|_| TreeEntryType::Symlink),
+        ));
+        let mut p = (
+            terminated(entry_type_parser, char(' ')),
+            terminated(take_till(|c| c == b'\0'), char('\0')),
+            take(20usize).map(|bytes| ObjectId(<[u8; 20]>::try_from(bytes).unwrap())),
+        );
+        let (rest, (entry_type, name, id)) = p.parse(input)?;
+        Ok((
+            rest,
+            TreeEntry {
+                entry_type,
+                name: name.to_vec(),
+                id,
+            },
+        ))
+    }
+}
+
+impl Tree {
+    fn parser<'a>(id: ObjectId) -> impl Fn(&'a [u8]) -> nom::IResult<&'a [u8], Self> {
+        move |input| {
+            many(0.., TreeEntry::parser)
+                .map(|entries| Tree { id, entries })
+                .parse(input)
+        }
+    }
+}
+
 #[cfg(test)]
 mod test {
-    use futures::executor::block_on;
+    use core::iter::zip;
 
     use super::*;
     use crate::test::repo::{TestRepo, make_basic_commit};
+    use futures::executor::block_on;
+    use hex_literal::hex;
 
     #[test]
     fn lookup_commit() {
@@ -244,7 +304,7 @@ mod test {
                 assert_eq!(commit.id, commit_id);
             }
             Object::Tag(_) => panic!(),
-            Object::Tree => panic!(),
+            Object::Tree(_) => panic!(),
             Object::Blob => panic!(),
         }
     }
@@ -435,5 +495,49 @@ a tag
             _ => panic!(),
         };
         assert_eq!(tag.tag_type, TagType::Tag);
+    }
+
+    #[test]
+    fn parse_tree() {
+        let mut data = Vec::new();
+        data.extend_from_slice(b"tree 155\0");
+        data.extend_from_slice(b"40000 a-directory\0");
+        data.extend_from_slice(&hex!("3a4df67dd7fd7cb3ca82d9896dbdd28053d39bdb"));
+        data.extend_from_slice(b"100644 a-file\0");
+        data.extend_from_slice(&hex!("e69de29bb2d1d6434b8b29ae775ad8c2e48c5391"));
+        data.extend_from_slice(b"120000 a-symlink\0");
+        data.extend_from_slice(&hex!("7c35e066a9001b24677ae572214d292cebc55979"));
+        data.extend_from_slice(b"100755 an-executable-file\0");
+        data.extend_from_slice(&hex!("e69de29bb2d1d6434b8b29ae775ad8c2e48c5391"));
+        let (_, object) = Object::parser(ObjectId([0u8; 20])).parse(&data).unwrap();
+        let tree = match object {
+            Object::Tree(tree) => tree,
+            _ => panic!(),
+        };
+        let expected_entries = [
+            TreeEntry {
+                entry_type: TreeEntryType::Tree,
+                id: ObjectId(hex!("3a4df67dd7fd7cb3ca82d9896dbdd28053d39bdb")),
+                name: Vec::from(b"a-directory"),
+            },
+            TreeEntry {
+                entry_type: TreeEntryType::File,
+                id: ObjectId(hex!("e69de29bb2d1d6434b8b29ae775ad8c2e48c5391")),
+                name: Vec::from(b"a-file"),
+            },
+            TreeEntry {
+                entry_type: TreeEntryType::Symlink,
+                id: ObjectId(hex!("7c35e066a9001b24677ae572214d292cebc55979")),
+                name: Vec::from(b"a-symlink"),
+            },
+            TreeEntry {
+                entry_type: TreeEntryType::Executable,
+                id: ObjectId(hex!("e69de29bb2d1d6434b8b29ae775ad8c2e48c5391")),
+                name: Vec::from(b"an-executable-file"),
+            },
+        ];
+        for (entry, expected) in zip(tree.entries.iter(), expected_entries.iter()) {
+            assert_eq!(entry, expected);
+        }
     }
 }

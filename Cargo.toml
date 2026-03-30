@@ -12,4 +12,5 @@ nom = { version = "8.0.0", default-features = false, features = ["alloc"] }
 [dev-dependencies]
 futures = "0.3.32"
 git2 = { version = "0.20.4", default-features = false, features = [] }
+hex-literal = "1.1.0"
 tempfile = "3.27.0"
