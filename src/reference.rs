@@ -89,14 +89,13 @@ impl Ref {
 
 #[cfg(test)]
 mod test {
-    #![allow(non_upper_case_globals)]
-
     use crate::{
         object::{Object, ObjectId},
         reference::{Ref, RefName},
         test::repo::{TestRepo, make_basic_commit},
     };
     use futures::executor::block_on;
+    use hex_literal::hex;
 
     #[test]
     fn resolve_head() {
@@ -140,10 +139,7 @@ mod test {
         let (_, parsed) = Ref::parse(content).unwrap();
         assert_eq!(
             parsed,
-            Ref::Direct(ObjectId([
-                0x61, 0x21, 0xd0, 0xb9, 0x77, 0x79, 0x27, 0x8f, 0xcc, 0x32, 0xcc, 0x8a, 0x02, 0x75,
-                0x4e, 0x7c, 0x58, 0x8d, 0x9c, 0x18,
-            ]))
+            Ref::Direct(ObjectId(hex!("6121d0b97779278fcc32cc8a02754e7c588d9c18"),))
         );
     }
 

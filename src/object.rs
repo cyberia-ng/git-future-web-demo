@@ -338,10 +338,7 @@ a commit
         assert_eq!(&commit.parents, &[]);
         assert_eq!(
             commit.tree,
-            ObjectId([
-                0x3a, 0x4d, 0xf6, 0x7d, 0xd7, 0xfd, 0x7c, 0xb3, 0xca, 0x82, 0xd9, 0x89, 0x6d, 0xbd,
-                0xd2, 0x80, 0x53, 0xd3, 0x9b, 0xdb,
-            ])
+            ObjectId(hex!("3a4df67dd7fd7cb3ca82d9896dbdd28053d39bdb"),)
         );
         assert_eq!(str::from_utf8(&commit.author_name).unwrap(), "a-user");
         assert_eq!(
@@ -383,10 +380,7 @@ another commit
         };
         assert_eq!(
             &commit.parents,
-            &[ObjectId([
-                0x16, 0xda, 0xfd, 0x3d, 0x0b, 0xa5, 0xaf, 0x72, 0xf0, 0x35, 0xd6, 0x41, 0xc0, 0x76,
-                0xa4, 0x15, 0x0e, 0xda, 0x54, 0x8d,
-            ])]
+            &[ObjectId(hex!("16dafd3d0ba5af72f035d641c076a4150eda548d"),)]
         );
     }
 
@@ -430,10 +424,7 @@ a message
         };
         assert_eq!(
             tag.object,
-            ObjectId([
-                0xee, 0xde, 0xff, 0xb6, 0xda, 0x16, 0xdd, 0xc3, 0xfb, 0x61, 0xb2, 0x25, 0x5a, 0x82,
-                0x59, 0xca, 0xcc, 0x04, 0x56, 0x91,
-            ])
+            ObjectId(hex!("eedeffb6da16ddc3fb61b2255a8259cacc045691"),)
         );
         assert_eq!(tag.tag_type, TagType::Commit);
         assert_eq!(tag.tag, b"annotated-tag");
