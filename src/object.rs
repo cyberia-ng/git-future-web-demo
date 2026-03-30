@@ -10,7 +10,7 @@ use nom::{
     Parser,
     branch::alt,
     bytes::complete::{tag, take, take_till, take_until},
-    character::complete::{alpha1, char, hex_digit0, i32, i64, newline, usize},
+    character::complete::{char, hex_digit0, i32, i64, newline, usize},
     combinator::all_consuming,
     multi::many,
     sequence::{delimited, terminated},
@@ -42,7 +42,7 @@ pub enum Object {
     Commit(Commit),
     Tag(Tag),
     Tree(Tree),
-    Blob,
+    Blob(Vec<u8>),
 }
 
 impl Object {
@@ -65,8 +65,14 @@ impl Object {
 
     fn parser<'a>(id: ObjectId) -> impl Fn(&'a [u8]) -> nom::IResult<&'a [u8], Object> {
         fn parse_header_body(input: &[u8]) -> nom::IResult<&[u8], (&[u8], &[u8])> {
-            let (rest, (object_type, expected_len)) =
-                (terminated(alpha1, char(' ')), terminated(usize, char('\0'))).parse(input)?;
+            let (rest, (object_type, expected_len)) = (
+                terminated(
+                    alt((tag("commit"), tag("tag"), tag("tree"), tag("blob"))),
+                    char(' '),
+                ),
+                terminated(usize, char('\0')),
+            )
+                .parse(input)?;
             let (rest, body) = take(expected_len).parse(rest)?;
             Ok((rest, (object_type, body)))
         }
@@ -83,7 +89,8 @@ impl Object {
                 b"tree" => all_consuming(Tree::parser(id))
                     .map(Object::Tree)
                     .parse(body)?,
-                _ => todo!(),
+                b"blob" => (&[][..], Object::Blob(body.to_vec())),
+                _ => unreachable!(),
             };
             Ok((&[][..], out))
         }
@@ -305,7 +312,7 @@ mod test {
             }
             Object::Tag(_) => panic!(),
             Object::Tree(_) => panic!(),
-            Object::Blob => panic!(),
+            Object::Blob(_) => panic!(),
         }
     }
 
@@ -530,5 +537,27 @@ a tag
         for (entry, expected) in zip(tree.entries.iter(), expected_entries.iter()) {
             assert_eq!(entry, expected);
         }
+    }
+
+    #[test]
+    fn parse_empty_blob() {
+        let input = b"blob 0\0";
+        let (_, object) = Object::parser(ObjectId([0; 20])).parse(input).unwrap();
+        let object = match object {
+            Object::Blob(blob) => blob,
+            _ => panic!(),
+        };
+        assert_eq!(object, &[]);
+    }
+
+    #[test]
+    fn parse_contentful_blob() {
+        let input = b"blob 11\0hello world";
+        let (_, object) = Object::parser(ObjectId([0; 20])).parse(input).unwrap();
+        let object = match object {
+            Object::Blob(blob) => blob,
+            _ => panic!(),
+        };
+        assert_eq!(object, b"hello world");
     }
 }
