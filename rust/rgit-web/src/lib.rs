@@ -1,16 +1,21 @@
 #![cfg_attr(not(test), no_std)]
+extern crate alloc;
+use alloc::string::String;
+use wasm_bindgen::prelude::*;
 
-pub fn add(left: u64, right: u64) -> u64 {
-    left + right
+#[wasm_bindgen]
+pub fn set_panic_hook() {
+    console_error_panic_hook::set_once();
 }
 
-#[cfg(test)]
-mod tests {
-    use super::*;
+#[wasm_bindgen]
+extern "C" {
+    fn alert(s: &str);
+}
 
-    #[test]
-    fn it_works() {
-        let result = add(2, 2);
-        assert_eq!(result, 4);
-    }
+#[wasm_bindgen]
+pub fn greet(name: &str) {
+    let mut greeting = String::from("Hello, ");
+    greeting.push_str(name);
+    alert(&greeting);
 }

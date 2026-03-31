@@ -3,5 +3,10 @@ name = "rgit-web"
 version = "0.1.0"
 edition = "2024"
 
+[lib]
+crate-type = ["cdylib"]
+
 [dependencies]
+console_error_panic_hook = "0.1.7"
 rgit-core = { path = "../rgit-core" }
+wasm-bindgen = { version = "0.2.115", default-features = false }
