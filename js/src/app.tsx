@@ -40,11 +40,12 @@ type RefName =
 function Refs({ repo }: { repo: WebRepo }) {
   return (
     <Async
-      action={(): Promise<Array<RefName>> => repo.refs()}
       deps={[repo]}
-      component={({ value }) => {
+      repo={repo}
+      component={async ({ repo }: { repo: WebRepo }) => {
+        const refs: Array<RefName> = await repo.refs();
         const decoder = new TextDecoder();
-        const names: Array<[string, string]> = value.map((name) => {
+        const names: Array<[string, string]> = refs.map((name) => {
           switch (name.type) {
             case "Branch":
             case "Tag":
