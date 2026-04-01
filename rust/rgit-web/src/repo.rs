@@ -12,7 +12,6 @@ pub struct WebRepo {
 
 #[wasm_bindgen]
 impl WebRepo {
-    #[wasm_bindgen]
     pub async fn construct(handle: FileSystemDirectoryHandle) -> Result<Self, JsValue> {
         let handle: FileSystemDirectoryHandle = match handle.get_file_handle("HEAD").await {
             Ok(_) => handle,
@@ -29,20 +28,15 @@ impl WebRepo {
         Ok(Self { repo })
     }
 
-    #[wasm_bindgen]
     pub async fn head(&self) -> Result<WebRef, JsValue> {
         let head = self.repo.head().await.map_err(to_js_error)?;
         Ok(WebRef::new(head))
     }
 
-    #[wasm_bindgen]
     pub async fn refs(&self) -> Result<Vec<JsValue>, JsValue> {
         let refs = self.repo.refs().await.map_err(to_js_error)?;
-        let mut out = Vec::new();
-        for reference in refs.iter() {
-            let reference = to_value(reference)?;
-            out.push(reference);
-        }
-        Ok(out)
+        refs.iter()
+            .map(|reference| to_value(reference).map_err(|e| e.into()))
+            .collect()
     }
 }
