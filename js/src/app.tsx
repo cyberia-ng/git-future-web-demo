@@ -16,8 +16,8 @@ export function App() {
     } else {
       content = (
         <div>
-          Branches:
-          <Branches repo={repo} />
+          Refs:
+          <Refs repo={repo} />
         </div>
       );
     }
@@ -33,23 +33,33 @@ export function App() {
 }
 
 type RefName =
-  | { Branch: Uint8Array }
-  | { Tag: Uint8Array }
-  | { Remote: Uint8Array }
-  | { Head: null };
-function Branches({ repo }: { repo: WebRepo }) {
+  | { type: "Branch"; value: Uint8Array }
+  | { type: "Tag"; value: Uint8Array }
+  | { type: "Remote"; value: Uint8Array }
+  | { type: "Head" };
+function Refs({ repo }: { repo: WebRepo }) {
   return (
     <Async
-      action={(): Promise<Array<RefName>> => repo.branches()}
+      action={(): Promise<Array<RefName>> => repo.refs()}
       deps={[repo]}
       component={({ value }) => {
-        const branches = value.flatMap((b) => ("Branch" in b ? [b.Branch] : []));
         const decoder = new TextDecoder();
-        const branchNames = branches.map((nameBytes) => decoder.decode(nameBytes));
+        const names: Array<[string, string]> = value.map((name) => {
+          switch (name.type) {
+            case "Branch":
+            case "Tag":
+            case "Remote":
+              return [name.type, decoder.decode(name.value)];
+            case "Head":
+              return [name.type, ""];
+          }
+        });
         return (
           <ul>
-            {branchNames.map((name) => (
-              <li key={name}>{name}</li>
+            {names.map(([type, name]) => (
+              <li key={name}>
+                {type}: {name}
+              </li>
             ))}
           </ul>
         );

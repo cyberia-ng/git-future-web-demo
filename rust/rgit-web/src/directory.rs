@@ -1,7 +1,7 @@
 use js_sys::{
-    Array, ArrayBuffer, AsyncIterator, Function, Promise, Reflect, TypeError, Uint8Array,
+    Array, ArrayBuffer, AsyncIterator, Function, JsString, Promise, Reflect, TypeError, Uint8Array,
 };
-use rgit_core::directory::{Directory, DirectoryError};
+use rgit_core::directory::{DirEntry, Directory, DirectoryError};
 use wasm_bindgen::prelude::*;
 use web_sys::{File, FileSystemDirectoryHandle, FileSystemFileHandle};
 
@@ -43,23 +43,30 @@ impl Directory for WebDirectory {
         f().await.map_err(to_directory_error)
     }
 
-    async fn list_dir(&self) -> Result<Vec<Vec<u8>>, DirectoryError> {
-        let f = async || -> Result<Vec<Vec<u8>>, JsValue> {
-            let keys_fn: Function =
-                Reflect::get(&self.handle, &JsValue::from("keys"))?.dyn_into()?;
-            let keys_iter: AsyncIterator =
-                Reflect::apply(&keys_fn, &self.handle, &Array::new())?.dyn_into()?;
+    async fn list_dir(&self) -> Result<Vec<DirEntry>, DirectoryError> {
+        let f = async || -> Result<Vec<DirEntry>, JsValue> {
+            let entries_fn: Function =
+                Reflect::get(&self.handle, &JsValue::from("entries"))?.dyn_into()?;
+            let entries_iter: AsyncIterator =
+                Reflect::apply(&entries_fn, &self.handle, &Array::new())?.dyn_into()?;
 
-            let collect_res = collect(&keys_iter);
+            let collect_res = collect(&entries_iter);
             let collected: Array = collect_res.await?.dyn_into()?;
             let mut out = Vec::new();
             for val in collected {
-                let val = val
-                    .as_string()
-                    .ok_or_else(|| TypeError::new(".keys() value was not a string"))?
-                    .as_bytes()
-                    .to_vec();
-                out.push(val);
+                let val: Array = val.dyn_into()?;
+                let name = val.at(0).as_string().ok_or_else(|| {
+                    TypeError::new(
+                        "FileSystemDirectoryHandle.entries() did not yield [string, _] pair",
+                    )
+                })?;
+                let kind: JsString =
+                    Reflect::get(&val.at(1), &JsValue::from("kind"))?.dyn_into()?;
+                if kind == JsString::from("file") {
+                    out.push(DirEntry::File(name.into_bytes()));
+                } else if kind == JsString::from("directory") {
+                    out.push(DirEntry::Directory(name.into_bytes()));
+                }
             }
             Ok(out)
         };
