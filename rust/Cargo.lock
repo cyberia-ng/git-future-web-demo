@@ -45,6 +45,7 @@ source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "c673075a2e0e5f4a1dde27ce9dee1ea4558c7ffe648f576438a20ca1d2acc4b0"
 dependencies = [
  "num-traits",
+ "serde",
 ]
 
 [[package]]
@@ -368,6 +369,8 @@ dependencies = [
  "hex-literal",
  "miniz_oxide",
  "nom",
+ "serde",
+ "serde_bytes",
  "tempfile",
 ]
 
@@ -378,6 +381,8 @@ dependencies = [
  "console_error_panic_hook",
  "js-sys",
  "rgit-core",
+ "serde",
+ "serde-wasm-bindgen",
  "wasm-bindgen",
  "wasm-bindgen-futures",
  "web-sys",
@@ -414,6 +419,28 @@ version = "1.0.228"
 source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "9a8e94ea7f378bd32cbbd37198a4a91436180c5bb472411e48b5ec2e2124ae9e"
 dependencies = [
+ "serde_core",
+ "serde_derive",
+]
+
+[[package]]
+name = "serde-wasm-bindgen"
+version = "0.6.5"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "8302e169f0eddcc139c70f139d19d6467353af16f9fce27e8c30158036a1e16b"
+dependencies = [
+ "js-sys",
+ "serde",
+ "wasm-bindgen",
+]
+
+[[package]]
+name = "serde_bytes"
+version = "0.11.19"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "a5d440709e79d88e51ac01c4b72fc6cb7314017bb7da9eeff678aa94c10e3ea8"
+dependencies = [
+ "serde",
  "serde_core",
 ]
 
