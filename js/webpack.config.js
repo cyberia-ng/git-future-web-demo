@@ -1,7 +1,7 @@
 import path from "path";
 
 export default {
-  entry: "./src/index.js",
+  entry: "./src/index.ts",
   mode: process.env.NODE_ENV === "production" ? "production" : "development",
   output: {
     path: path.resolve(import.meta.dirname, "dist"),
@@ -17,4 +17,11 @@ export default {
     compress: true,
     port: 9000,
   },
+  resolve: {
+    extensions: [".ts", ".tsx", ".js"],
+  },
+  module: {
+    rules: [{ test: /\.(ts|tsx)$/, loader: "ts-loader" }],
+  },
+  devtool: "source-map",
 };
