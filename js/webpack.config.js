@@ -10,9 +10,6 @@ export default {
     path: path.resolve(import.meta.dirname, "dist"),
     filename: "bundle.js",
   },
-  experiments: {
-    asyncWebAssembly: true,
-  },
   devServer: {
     static: {
       directory: path.join(import.meta.dirname, "static"),
