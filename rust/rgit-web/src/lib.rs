@@ -1,11 +1,12 @@
-use js_sys::{Array, Uint8Array};
-use rgit_core::{reference::RefName, repo::Repo};
+use rgit_core::repo::Repo;
+use serde_wasm_bindgen::to_value;
 use wasm_bindgen::prelude::*;
 use web_sys::{DomException, FileSystemDirectoryHandle};
 
-use crate::directory::WebDirectory;
+use crate::{directory::WebDirectory, error::to_js_error};
 
 mod directory;
+mod error;
 
 #[wasm_bindgen]
 pub fn set_panic_hook() {
@@ -37,21 +38,8 @@ impl WebRepo {
     }
 
     #[wasm_bindgen]
-    pub async fn branches(&self) -> Result<Array, JsValue> {
-        let branches = self
-            .repo
-            .branches()
-            .await
-            .map_err(|e| js_sys::Error::new(&format!("{:?}", e)))?;
-        Ok(branches
-            .into_iter()
-            .map(|branch| {
-                let branch = match branch {
-                    RefName::Branch(branch) => branch,
-                    _ => unreachable!(),
-                };
-                Uint8Array::new_from_slice(&branch)
-            })
-            .collect())
+    pub async fn branches(&self) -> Result<JsValue, JsValue> {
+        let branches = self.repo.branches().await.map_err(to_js_error)?;
+        Ok(to_value(&branches)?)
     }
 }
