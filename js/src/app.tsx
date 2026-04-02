@@ -1,5 +1,5 @@
 import { useState } from "react";
-import { WebRefName, WebRepo } from "../pkg/rgit_web";
+import { WebObject, WebRef, WebRefName, WebRepo } from "../pkg/rgit_web";
 import { Async } from "./async";
 
 export function App() {
@@ -15,10 +15,16 @@ export function App() {
       content = <div>Error: {repo.message}</div>;
     } else {
       content = (
-        <div>
-          Refs:
-          <Refs repo={repo} />
-        </div>
+        <>
+          <div>
+            <div>Refs:</div>
+            <Refs repo={repo} />
+          </div>
+          <div>
+            <div>Tree:</div>
+            <Tree repo={repo} />
+          </div>
+        </>
       );
     }
   }
@@ -40,7 +46,6 @@ type RefName =
 function Refs({ repo }: { repo: WebRepo }) {
   return (
     <Async
-      deps={[repo]}
       repo={repo}
       component={async ({ repo }: { repo: WebRepo }) => {
         const refs: Array<WebRefName> = await repo.refs();
@@ -62,6 +67,76 @@ function Refs({ repo }: { repo: WebRepo }) {
             {names.map(([type, name]) => (
               <li key={name}>
                 {type}: {name}
+              </li>
+            ))}
+          </ul>
+        );
+      }}
+    />
+  );
+}
+
+type GitObject =
+  | {
+    type: "Commit";
+    value: {
+      id: Uint8Array;
+      author_name: Uint8Array;
+      author_email: Uint8Array;
+      author_date: string;
+      committer_name: Uint8Array;
+      committer_email: Uint8Array;
+      commit_date: string;
+      tree: Uint8Array;
+      parents: Uint8Array[];
+      message: Uint8Array;
+    };
+  }
+  | {
+    type: "Tag";
+    value: unknown;
+  }
+  | {
+    type: "Tree";
+    value: {
+      id: Uint8Array;
+      entries: Array<{
+        id: Uint8Array;
+        name: Uint8Array;
+        entry_type: "Tree" | "Blob" | "Symlink" | "Executable";
+      }>;
+    };
+  }
+  | {
+    type: "Blob";
+    value: unknown;
+  };
+function Tree({ repo }: { repo: WebRepo }) {
+  return (
+    <Async
+      repo={repo}
+      component={async ({ repo }: { repo: WebRepo }) => {
+        const head = await repo.head();
+        const commit = await head.resolve_to_object(repo);
+        const commitJs: GitObject = commit.to_js();
+        if (commitJs.type !== "Commit") {
+          throw new Error("HEAD did not point to a commit");
+        }
+        const tree = await WebObject.lookup(repo, commitJs.value.tree);
+        const treeJs: GitObject = tree.to_js();
+        if (treeJs.type !== "Tree") {
+          throw new Error("HEAD->tree was not a tree");
+        }
+        const decoder = new TextDecoder();
+        const decodedEntries = treeJs.value.entries.map((entry) => ({
+          ...entry,
+          name: decoder.decode(entry.name),
+        }));
+        return (
+          <ul>
+            {decodedEntries.map((entry) => (
+              <li key={entry.name}>
+                {entry.entry_type}: {entry.name}
               </li>
             ))}
           </ul>

@@ -9,9 +9,7 @@ use crate::{
 };
 
 #[wasm_bindgen]
-pub struct WebRepo {
-    repo: Repo<WebDirectory>,
-}
+pub struct WebRepo(pub(crate) Repo<WebDirectory>);
 
 #[wasm_bindgen]
 impl WebRepo {
@@ -28,16 +26,16 @@ impl WebRepo {
             }
         };
         let repo = Repo::new(WebDirectory::new(&handle));
-        Ok(Self { repo })
+        Ok(Self(repo))
     }
 
     pub async fn head(&self) -> Result<WebRef, JsValue> {
-        let head = self.repo.head().await.map_err(to_js_error)?;
-        Ok(WebRef::new(head))
+        let head = self.0.head().await.map_err(to_js_error)?;
+        Ok(WebRef(head))
     }
 
     pub async fn refs(&self) -> Result<Vec<WebRefName>, JsValue> {
-        let refs = self.repo.refs().await.map_err(to_js_error)?;
-        Ok(refs.into_iter().map(WebRefName::new).collect())
+        let refs = self.0.refs().await.map_err(to_js_error)?;
+        Ok(refs.into_iter().map(WebRefName).collect())
     }
 }

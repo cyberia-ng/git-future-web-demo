@@ -6,8 +6,9 @@ export function Async<P = {}>({
   ...props
 }: {
   component: (props: Omit<P, "component" | "deps">) => Promise<React.ReactNode>;
-  deps: React.DependencyList;
+  deps?: React.DependencyList;
 } & P) {
+  const resolvedDeps = deps ?? Object.values(props);
   const [child, setChild] = useState<React.ReactNode>(<>Loading...</>);
   useEffect(() => {
     component(props)
@@ -19,6 +20,6 @@ export function Async<P = {}>({
           setChild(<>Error: non - Error error</>);
         }
       });
-  }, deps);
+  }, resolvedDeps);
   return child;
 }

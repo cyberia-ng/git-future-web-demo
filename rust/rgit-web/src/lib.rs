@@ -4,6 +4,7 @@ mod directory;
 mod error;
 mod reference;
 mod repo;
+mod object;
 
 #[wasm_bindgen]
 pub fn set_panic_hook() {
