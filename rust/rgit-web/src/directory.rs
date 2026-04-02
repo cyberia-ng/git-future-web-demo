@@ -1,9 +1,9 @@
 use js_sys::{
     Array, ArrayBuffer, AsyncIterator, Function, JsString, Promise, Reflect, TypeError, Uint8Array,
 };
-use rgit_core::directory::{DirEntry, Directory, DirectoryError};
+use rgit_core::directory::{DirEntry, Directory, DirectoryError, File};
 use wasm_bindgen::prelude::*;
-use web_sys::{File, FileSystemDirectoryHandle, FileSystemFileHandle};
+use web_sys::{FileSystemDirectoryHandle, FileSystemFileHandle};
 
 #[wasm_bindgen(module = "/src/collect.js")]
 extern "C" {
@@ -14,6 +14,11 @@ extern "C" {
 #[derive(Debug, Clone)]
 pub struct WebDirectory {
     handle: web_sys::FileSystemDirectoryHandle,
+}
+
+#[derive(Debug)]
+pub struct WebFile {
+    file: web_sys::File,
 }
 
 impl WebDirectory {
@@ -29,6 +34,8 @@ fn to_directory_error(value: JsValue) -> DirectoryError {
 }
 
 impl Directory for WebDirectory {
+    type File = WebFile;
+
     async fn open_subdir(&self, name: &[u8]) -> Result<Self, DirectoryError> {
         let f = async || -> Result<Self, JsValue> {
             let handle = self
@@ -73,8 +80,8 @@ impl Directory for WebDirectory {
         f().await.map_err(to_directory_error)
     }
 
-    async fn read_file(&self, name: &[u8]) -> Result<Vec<u8>, DirectoryError> {
-        let f = async || -> Result<Vec<u8>, JsValue> {
+    async fn open_file(&self, name: &[u8]) -> Result<Self::File, DirectoryError> {
+        let f = async || -> Result<Self::File, JsValue> {
             let handle = self
                 .handle
                 .get_file_handle(
@@ -82,13 +89,30 @@ impl Directory for WebDirectory {
                 )
                 .await?;
             let handle: FileSystemFileHandle = handle.dyn_into()?;
-            let file: File = handle.get_file().await?.dyn_into()?;
-            let data: ArrayBuffer = file.array_buffer().await?.dyn_into()?;
+            let file: web_sys::File = handle.get_file().await?.dyn_into()?;
+            Ok(WebFile { file })
+        };
+        f().await.map_err(to_directory_error)
+    }
+}
+
+impl File for WebFile {
+    async fn read_all(&mut self) -> Result<Vec<u8>, DirectoryError> {
+        let f = async || -> Result<Vec<u8>, JsValue> {
+            let data: ArrayBuffer = self.file.array_buffer().await?.dyn_into()?;
             let data = Uint8Array::new(&data);
             let mut out = vec![0u8; data.length() as usize];
             data.copy_to(&mut out);
             Ok(out)
         };
         f().await.map_err(to_directory_error)
+    }
+
+    async fn read_segment(
+        &mut self,
+        offset: u64,
+        dest: &mut [u8],
+    ) -> Result<(), DirectoryError> {
+        todo!()
     }
 }
