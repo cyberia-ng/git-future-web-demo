@@ -1,9 +1,12 @@
 use rgit_core::repo::Repo;
-use serde_wasm_bindgen::to_value;
 use wasm_bindgen::prelude::*;
 use web_sys::{DomException, FileSystemDirectoryHandle};
 
-use crate::{directory::WebDirectory, error::to_js_error, reference::WebRef};
+use crate::{
+    directory::WebDirectory,
+    error::to_js_error,
+    reference::{WebRef, WebRefName},
+};
 
 #[wasm_bindgen]
 pub struct WebRepo {
@@ -33,10 +36,8 @@ impl WebRepo {
         Ok(WebRef::new(head))
     }
 
-    pub async fn refs(&self) -> Result<Vec<JsValue>, JsValue> {
+    pub async fn refs(&self) -> Result<Vec<WebRefName>, JsValue> {
         let refs = self.repo.refs().await.map_err(to_js_error)?;
-        refs.iter()
-            .map(|reference| to_value(reference).map_err(|e| e.into()))
-            .collect()
+        Ok(refs.into_iter().map(WebRefName::new).collect())
     }
 }

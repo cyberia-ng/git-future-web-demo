@@ -1,5 +1,5 @@
 import { useState } from "react";
-import { WebRepo } from "../pkg/rgit_web";
+import { WebRefName, WebRepo } from "../pkg/rgit_web";
 import { Async } from "./async";
 
 export function App() {
@@ -43,18 +43,20 @@ function Refs({ repo }: { repo: WebRepo }) {
       deps={[repo]}
       repo={repo}
       component={async ({ repo }: { repo: WebRepo }) => {
-        const refs: Array<RefName> = await repo.refs();
+        const refs: Array<WebRefName> = await repo.refs();
         const decoder = new TextDecoder();
-        const names: Array<[string, string]> = refs.map((name) => {
-          switch (name.type) {
-            case "Branch":
-            case "Tag":
-            case "Remote":
-              return [name.type, decoder.decode(name.value)];
-            case "Head":
-              return [name.type, ""];
-          }
-        });
+        const names: Array<[string, string]> = refs
+          .map((ref): RefName => ref.to_js())
+          .map((name) => {
+            switch (name.type) {
+              case "Branch":
+              case "Tag":
+              case "Remote":
+                return [name.type, decoder.decode(name.value)];
+              case "Head":
+                return [name.type, ""];
+            }
+          });
         return (
           <ul>
             {names.map(([type, name]) => (
