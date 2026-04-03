@@ -360,6 +360,21 @@ source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "f8dcc9c7d52a811697d2151c701e0d08956f92b0e24136cf4cf27b57a6a0d9bf"
 
 [[package]]
+name = "rand_core"
+version = "0.10.0"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "0c8d0fd677905edcbeedbf2edb6494d676f0e98d54d5cf9bda0b061cb8fb8aba"
+
+[[package]]
+name = "rand_pcg"
+version = "0.10.1"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "2a36dd10a879f5c16e363eed24471b321b114ce3112c2d5d8df06545fcf48152"
+dependencies = [
+ "rand_core",
+]
+
+[[package]]
 name = "rgit-core"
 version = "0.1.0"
 dependencies = [
@@ -369,6 +384,8 @@ dependencies = [
  "hex-literal",
  "miniz_oxide",
  "nom",
+ "rand_core",
+ "rand_pcg",
  "serde",
  "serde_bytes",
  "tempfile",
