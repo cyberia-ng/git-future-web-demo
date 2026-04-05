@@ -17,7 +17,8 @@ export function Async<P = {}>({
         if (e instanceof Error) {
           setChild(<>Error: {e.message}</>);
         } else {
-          setChild(<>Error: non - Error error</>);
+          console.log(e);
+          setChild(<>Error: non-Error error</>);
         }
       });
   }, resolvedDeps);

@@ -119,6 +119,23 @@ impl File for WebFile {
         offset: u64,
         dest: &mut [u8],
     ) -> Result<usize, DirectoryError> {
-        todo!()
+        let mut f = async || -> Result<usize, JsValue> {
+            if offset > 2u64.pow(53) {
+                panic!("offset not representable as f64");
+            }
+            let start: f64 = offset as f64;
+            let end = offset + u64::try_from(dest.len()).unwrap();
+            if end > 2u64.pow(53) {
+                panic!("offset + length not representable as f64");
+            }
+            let end: f64 = end as f64;
+            let sliced_blob = self.file.slice_with_f64_and_f64(start, end)?;
+            let size = sliced_blob.size() as usize;
+            let data = sliced_blob.array_buffer().await?;
+            let data = Uint8Array::new(&data);
+            data.copy_to(&mut dest[0..size]);
+            Ok(size)
+        };
+        f().await.map_err(to_directory_error)
     }
 }
