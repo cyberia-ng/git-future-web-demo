@@ -31,8 +31,7 @@ impl WebDirectory {
 
 fn to_directory_error(value: JsValue) -> DirectoryError {
     if value.has_type::<DomException>()
-        && Reflect::get(&value, &JsValue::from("name")).unwrap()
-            == JsValue::from("NotFoundError")
+        && Reflect::get(&value, &JsValue::from("name")).unwrap() == JsValue::from("NotFoundError")
     {
         DirectoryError::NotFound(Box::new(value))
     } else {
