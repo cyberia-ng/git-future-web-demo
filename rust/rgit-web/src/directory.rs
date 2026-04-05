@@ -3,7 +3,7 @@ use js_sys::{
 };
 use rgit_core::directory::{DirEntry, Directory, DirectoryError, File};
 use wasm_bindgen::prelude::*;
-use web_sys::{FileSystemDirectoryHandle, FileSystemFileHandle};
+use web_sys::{DomException, FileSystemDirectoryHandle, FileSystemFileHandle};
 
 #[wasm_bindgen(module = "/src/collect.js")]
 extern "C" {
@@ -30,7 +30,14 @@ impl WebDirectory {
 }
 
 fn to_directory_error(value: JsValue) -> DirectoryError {
-    DirectoryError(Box::new(value))
+    if value.has_type::<DomException>()
+        && Reflect::get(&value, &JsValue::from("name")).unwrap()
+            == JsValue::from("NotFoundError")
+    {
+        DirectoryError::NotFound(Box::new(value))
+    } else {
+        DirectoryError::Other(Box::new(value))
+    }
 }
 
 impl Directory for WebDirectory {
