@@ -112,7 +112,7 @@ impl File for WebFile {
         &mut self,
         offset: u64,
         dest: &mut [u8],
-    ) -> Result<(), DirectoryError> {
+    ) -> Result<usize, DirectoryError> {
         todo!()
     }
 }
