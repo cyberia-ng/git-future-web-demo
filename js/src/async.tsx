@@ -9,7 +9,7 @@ export function Async<P = {}>({
   deps?: React.DependencyList;
 } & P) {
   const resolvedDeps = deps ?? Object.values(props);
-  const [child, setChild] = useState<React.ReactNode>(<>Loading...</>);
+  const [child, setChild] = useState<React.ReactNode>(null);
   useEffect(() => {
     component(props)
       .then(setChild)
