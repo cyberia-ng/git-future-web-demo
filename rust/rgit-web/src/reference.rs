@@ -13,7 +13,7 @@ impl WebRef {
     }
 
     pub async fn resolve_to_object(&self, repo: &WebRepo) -> Result<WebObject, JsValue> {
-        let obj = self.0.resolve_to_object(&repo.0).await.map_err(to_js_error)?;
+        let obj = self.0.peel_to_object(&repo.0).await.map_err(to_js_error)?;
         Ok(WebObject(obj))
     }
 }

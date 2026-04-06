@@ -35,7 +35,7 @@ impl WebRepo {
     }
 
     pub async fn refs(&self) -> Result<Vec<WebRefName>, JsValue> {
-        let refs = self.0.refs().await.map_err(to_js_error)?;
+        let refs = self.0.ref_names().await.map_err(to_js_error)?;
         Ok(refs.into_iter().map(WebRefName).collect())
     }
 }
