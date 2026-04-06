@@ -1,10 +1,10 @@
-use crate::{error::to_js_error, object::WebObject, repo::WebRepo};
-use rgit_core::reference::{Ref, RefName};
+use crate::{directory::WebDirectory, error::to_js_error, object::WebObject};
+use rgit_core::{Ref, RefName};
 use serde_wasm_bindgen::to_value;
 use wasm_bindgen::prelude::*;
 
 #[wasm_bindgen]
-pub struct WebRef(pub(crate) Ref);
+pub struct WebRef(pub(crate) Ref<'static, WebDirectory>);
 
 #[wasm_bindgen]
 impl WebRef {
@@ -12,8 +12,8 @@ impl WebRef {
         Ok(to_value(&self.0)?)
     }
 
-    pub async fn resolve_to_object(&self, repo: &WebRepo) -> Result<WebObject, JsValue> {
-        let obj = self.0.peel_to_object(&repo.0).await.map_err(to_js_error)?;
+    pub async fn resolve_to_object(&self) -> Result<WebObject, JsValue> {
+        let obj = self.0.peel_to_object().await.map_err(to_js_error)?;
         Ok(WebObject(obj))
     }
 }

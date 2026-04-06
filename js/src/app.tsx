@@ -76,65 +76,57 @@ function Refs({ repo }: { repo: WebRepo }) {
   );
 }
 
-type GitObject =
+type GitObject = {
+  id: string;
+  body:
   | {
     type: "Commit";
     value: {
-      id: Uint8Array;
-      author_name: Uint8Array;
-      author_email: Uint8Array;
+      author_name: string;
+      author_email: string;
       author_date: string;
-      committer_name: Uint8Array;
-      committer_email: Uint8Array;
+      committer_name: string;
+      committer_email: string;
       commit_date: string;
-      tree: Uint8Array;
-      parents: Uint8Array[];
-      message: Uint8Array;
+      tree: string;
+      parents: string[];
+      message: string;
     };
-  }
-  | {
-    type: "Tag";
-    value: unknown;
   }
   | {
     type: "Tree";
     value: {
-      id: Uint8Array;
       entries: Array<{
-        id: Uint8Array;
-        name: Uint8Array;
+        id: string;
+        name: string;
         entry_type: "Tree" | "Blob" | "Symlink" | "Executable";
       }>;
     };
   }
-  | {
-    type: "Blob";
-    value: unknown;
-  };
+  | { type: "Tag"; value: unknown }
+  | { type: "Blob"; value: Uint8Array };
+};
+
 function Tree({ repo }: { repo: WebRepo }) {
   return (
     <Async
       repo={repo}
       component={async ({ repo }: { repo: WebRepo }) => {
         const head = await repo.head();
-        const commit = await head.resolve_to_object(repo);
+        const commit = await head.resolve_to_object();
         const commitJs: GitObject = commit.to_js();
-        if (commitJs.type !== "Commit") {
+        if (commitJs.body.type !== "Commit") {
           throw new Error("HEAD did not point to a commit");
         }
-        const tree = await WebObject.lookup(repo, commitJs.value.tree);
+        console.log(commitJs);
+        const tree = await repo.lookup_object(commitJs.body.value.tree);
         const treeJs: GitObject = tree.to_js();
-        if (treeJs.type !== "Tree") {
+        if (treeJs.body.type !== "Tree") {
           throw new Error("HEAD->tree was not a tree");
         }
-        const decoder = new TextDecoder();
-        const decodedEntries = treeJs.value.entries.map((entry) => ({
-          ...entry,
-          name: decoder.decode(entry.name),
-        }));
         return (
           <ul>
-            {decodedEntries.map((entry) => (
+            {treeJs.body.value.entries.map((entry) => (
               <li key={entry.name}>
                 {entry.entry_type}: {entry.name}
               </li>

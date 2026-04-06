@@ -19,5 +19,5 @@ web-sys = { version = "0.3.92", features = [
   "FileSystemDirectoryHandle",
   "FileSystemFileHandle",
   "DomException",
-  "console"
+  "console",
 ] }

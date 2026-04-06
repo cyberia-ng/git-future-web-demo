@@ -23,7 +23,7 @@ export default {
   module: {
     rules: [{ test: /\.(ts|tsx)$/, loader: "ts-loader" }],
   },
-  devtool: isProduction ? false : 'source-map',
+  devtool: isProduction ? false : "source-map",
   plugins: [
     new CopyWebpackPlugin({
       patterns: [{ from: "static" }],

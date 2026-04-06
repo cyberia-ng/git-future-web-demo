@@ -6,5 +6,5 @@ class RGitError extends Error {
 }
 
 export function make_rgit_error(message, inner) {
-  return new RGitError(message, inner)
+  return new RGitError(message, inner);
 }
