@@ -10,7 +10,14 @@ import {
   type ErrorStateTransform,
   type StateTransform,
 } from "./state";
-import { emptyView, resolveView, type RepoView, type View } from "./view";
+import {
+  emptyView,
+  resolveView,
+  derivedViewOf,
+  type DerivedView,
+  type RepoView,
+  type ViewModel,
+} from "./view";
 import type { StandardProps } from "./props";
 import { BlobComponent } from "./blob";
 import { Errors } from "./errors";
@@ -25,7 +32,10 @@ export function App() {
   function updateErrorState(transform: ErrorStateTransform) {
     setErrorState(transform(errorState));
   }
-  const [view, setView] = useState<View>(emptyView);
+  const [viewState, setViewState] = useState<ViewModel<DerivedView>>({
+    state: appState,
+    model: emptyView,
+  });
   function handleError(e: unknown) {
     if (e instanceof Error) {
       updateErrorState(addError(e.message));
@@ -36,7 +46,9 @@ export function App() {
   }
 
   useEffect(() => {
-    resolveView(repo, appState).then(setView).catch(handleError);
+    resolveView(repo, appState)
+      .then((derived) => setViewState({ state: appState, model: derived }))
+      .catch(handleError);
   }, [repo, appState]);
 
   async function openRepo() {
@@ -59,7 +71,9 @@ export function App() {
     <div className="col-lg-8 mx-auto p-4 py-md-5">
       <header className="d-flex pb-3 mb-5 border-bottom">
         <div className="flex-grow-1">
-          <h4 className="mb-0">{view.type === "repo" ? view.name : "rgit-web"}</h4>
+          <h4 className="mb-0">
+            {viewState.model.type === "repo" ? viewState.model.name : "rgit-web"}
+          </h4>
         </div>
         <div>
           {repo === null ? (
@@ -75,27 +89,29 @@ export function App() {
       </header>
       <main>
         <Errors state={errorState} updateErrorState={updateErrorState} />
-        {view.type === "repo" && <Repo state={appState} view={view} updateState={updateState} />}
+        {viewState.model.type === "repo" && (
+          <Repo view={derivedViewOf(viewState, viewState.model)} updateState={updateState} />
+        )}
       </main>
     </div>
   );
 }
 
-function Repo({ state, view, updateState }: StandardProps<RepoView>) {
-  const nav = <TreeNav state={state} view={view.subView} updateState={updateState} />;
-  switch (view.subView.type) {
+function Repo({ view, updateState }: StandardProps<RepoView>) {
+  const nav = <TreeNav view={derivedViewOf(view, view.model.subView)} updateState={updateState} />;
+  switch (view.model.subView.type) {
     case "tree":
       return (
         <>
           {nav}
-          <Tree state={state} view={view.subView} updateState={updateState} />
+          <Tree view={derivedViewOf(view, view.model.subView)} updateState={updateState} />
         </>
       );
     case "blob":
       return (
         <>
           {nav}
-          <BlobComponent state={state} view={view.subView} updateState={updateState} />
+          <BlobComponent view={derivedViewOf(view, view.model.subView)} updateState={updateState} />
         </>
       );
   }

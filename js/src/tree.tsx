@@ -3,14 +3,14 @@ import { appendPath, setPath } from "./state";
 import type { TreeEntry } from "./types";
 import type { BlobView, TreeView } from "./view";
 
-export function TreeNav({ state, updateState, view }: StandardProps<TreeView | BlobView>) {
+export function TreeNav({ updateState, view }: StandardProps<TreeView | BlobView>) {
   const linkClassName = "link-body-emphasis fw-semibold text-decoration-none";
   const rootIcon = <i className="bi bi-house-door-fill" aria-label="root" />;
   return (
     <nav aria-label="tree-breadcrumbs">
       <ol className="breadcrumb p-3 bg-body-tertiary rounded-3">
         <li className="breadcrumb-item">
-          {state.path.length === 0 ? (
+          {view.state.path.length === 0 ? (
             rootIcon
           ) : (
             <a className={linkClassName} href="#" onClick={() => updateState(setPath([]))}>
@@ -18,29 +18,29 @@ export function TreeNav({ state, updateState, view }: StandardProps<TreeView | B
             </a>
           )}
         </li>
-        {state.path.slice(0, state.path.length - 1).map((component, index) => (
+        {view.state.path.slice(0, view.state.path.length - 1).map((component, index) => (
           <li key={component} className="breadcrumb-item">
             <a
               className={linkClassName}
               href="#"
-              onClick={() => updateState(setPath(state.path.slice(0, index)))}
+              onClick={() => updateState(setPath(view.state.path.slice(0, index)))}
             >
               {component}
             </a>
           </li>
         ))}
-        {state.path.length > 0 && (
-          <li className="breadcrumb-item">{state.path[state.path.length - 1]}</li>
+        {view.state.path.length > 0 && (
+          <li className="breadcrumb-item">{view.state.path[view.state.path.length - 1]}</li>
         )}
-        {view.type === "tree" && <li className="breadcrumb-item"></li>}
+        {view.model.type === "tree" && <li className="breadcrumb-item"></li>}
       </ol>
     </nav>
   );
 }
 
 export function Tree({ view, updateState }: StandardProps<TreeView>) {
-  const directories = view.entries.filter((entry) => entry.entry_type === "Tree");
-  const others = view.entries.filter((entry) => entry.entry_type !== "Tree");
+  const directories = view.model.entries.filter((entry) => entry.entry_type === "Tree");
+  const others = view.model.entries.filter((entry) => entry.entry_type !== "Tree");
   function BasicEntry({
     icon,
     ariaLabel,

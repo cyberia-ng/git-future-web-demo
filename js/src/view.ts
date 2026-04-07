@@ -2,9 +2,12 @@ import type { WebRepo } from "../pkg/rgit_web";
 import type { AppState } from "./state";
 import type { GitObject, TreeEntry } from "./types";
 
-export const emptyView: View = { type: "empty" };
+export type ViewModel<T> = { state: AppState; model: T };
+export type DerivedView = EmptyView | RepoView;
 
-export type View = EmptyView | RepoView;
+export function derivedViewOf<T>(model: ViewModel<unknown>, derived: T): ViewModel<T> {
+  return { state: model.state, model: derived };
+}
 
 export type RepoView = {
   type: "repo";
@@ -15,6 +18,7 @@ export type RepoView = {
 export type EmptyView = {
   type: "empty";
 };
+export const emptyView: EmptyView = { type: "empty" };
 
 export type TreeView = {
   type: "tree";
@@ -29,7 +33,7 @@ export type BlobView = {
 export async function resolveView(
   repoState: { name: string; repo: WebRepo } | null,
   state: AppState,
-): Promise<View> {
+): Promise<DerivedView> {
   if (repoState === null) {
     return emptyView;
   }
@@ -58,10 +62,18 @@ export async function resolveView(
   }
   switch (viewingObject.body.type) {
     case "Tree": {
-      return { type: "repo", name, subView: { type: "tree", entries: viewingObject.body.entries } };
+      return {
+        type: "repo",
+        name,
+        subView: { type: "tree", entries: viewingObject.body.entries },
+      };
     }
     case "Blob": {
-      return { type: "repo", name, subView: { type: "blob", content: viewingObject.body.data } };
+      return {
+        type: "repo",
+        name,
+        subView: { type: "blob", content: viewingObject.body.data },
+      };
     }
     default: {
       throw new Error("not implemented");
