@@ -31,7 +31,7 @@ impl WebDirectory {
 
 fn to_directory_error(value: JsValue) -> DirectoryError {
     if value.has_type::<DomException>()
-        && Reflect::get(&value, &JsValue::from("name")).unwrap() == JsValue::from("NotFoundError")
+        && Reflect::get(&value, &JsValue::from("name")).unwrap() == "NotFoundError"
     {
         DirectoryError::NotFound(Box::new(value))
     } else {
@@ -75,9 +75,9 @@ impl Directory for WebDirectory {
                 })?;
                 let kind: JsString =
                     Reflect::get(&val.at(1), &JsValue::from("kind"))?.dyn_into()?;
-                if kind == JsString::from("file") {
+                if kind == "file" {
                     out.push(DirEntry::File(name.into_bytes()));
-                } else if kind == JsString::from("directory") {
+                } else if kind == "directory" {
                     out.push(DirEntry::Directory(name.into_bytes()));
                 }
             }
