@@ -21,7 +21,7 @@ export function BlobComponent({ state, view, updateState }: StandardProps<BlobVi
           {lines.map((line, idx) => (
             <div className="row">
               <div className="col-1 text-end user-select-none text-secondary">{idx + 1}</div>
-              <div className="col font-monospace" key={idx}>
+              <div className="col font-monospace whitespace-pre-wrap" key={idx}>
                 {line}
               </div>
             </div>
