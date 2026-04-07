@@ -1,7 +1,42 @@
 import type { StandardProps } from "./props";
-import { appendPath, popPath } from "./state";
+import { appendPath, setPath } from "./state";
 import type { TreeEntry } from "./types";
-import type { TreeView } from "./view";
+import type { BlobView, TreeView } from "./view";
+
+export function TreeNav({ state, updateState, view }: StandardProps<TreeView | BlobView>) {
+  const linkClassName = "link-body-emphasis fw-semibold text-decoration-none";
+  const rootIcon = <i className="bi bi-house-door-fill" aria-label="root" />;
+  return (
+    <nav aria-label="tree-breadcrumbs">
+      <ol className="breadcrumb p-3 bg-body-tertiary rounded-3">
+        <li className="breadcrumb-item">
+          {state.path.length === 0 ? (
+            rootIcon
+          ) : (
+            <a className={linkClassName} href="#" onClick={() => updateState(setPath([]))}>
+              {rootIcon}
+            </a>
+          )}
+        </li>
+        {state.path.slice(0, state.path.length - 1).map((component, index) => (
+          <li key={component} className="breadcrumb-item">
+            <a
+              className={linkClassName}
+              href="#"
+              onClick={() => updateState(setPath(state.path.slice(0, index)))}
+            >
+              {component}
+            </a>
+          </li>
+        ))}
+        {state.path.length > 0 && (
+          <li className="breadcrumb-item">{state.path[state.path.length - 1]}</li>
+        )}
+        {view.type === "tree" && <li className="breadcrumb-item"></li>}
+      </ol>
+    </nav>
+  );
+}
 
 export function Tree({ view, updateState }: StandardProps<TreeView>) {
   const directories = view.entries.filter((entry) => entry.entry_type === "Tree");
@@ -33,7 +68,7 @@ export function Tree({ view, updateState }: StandardProps<TreeView>) {
     let ariaLabel;
     switch (entry.entry_type) {
       case "Tree":
-        icon = "folder";
+        icon = "folder-fill";
         ariaLabel = "subdirectory";
         break;
       case "File":
@@ -42,7 +77,7 @@ export function Tree({ view, updateState }: StandardProps<TreeView>) {
         ariaLabel = "file";
         break;
       case "Symlink":
-        icon = "folder-link-45deg";
+        icon = "link-45deg";
         ariaLabel = "symlink";
         break;
       case "Commit":
@@ -61,14 +96,6 @@ export function Tree({ view, updateState }: StandardProps<TreeView>) {
   }
   return (
     <div className="list-group">
-      {!view.isRoot && (
-        <BasicEntry
-          name=".."
-          icon=""
-          ariaLabel="parent directory"
-          onClick={() => updateState(popPath())}
-        />
-      )}
       {directories.map((entry) => (
         <Entry entry={entry} key={entry.name} />
       ))}

@@ -11,15 +11,15 @@ export type StateTransform = (oldState: AppState) => AppState;
 export const reset: StateTransform = () => initialAppState;
 
 export function appendPath(component: string): StateTransform {
-  return (oldState) => ({
-    ...oldState,
-    path: [...oldState.path, component],
+  return (state) => ({
+    ...state,
+    path: [...state.path, component],
   });
 }
 
-export function popPath(): StateTransform {
-  return (oldState) => ({
-    ...oldState,
-    path: oldState.path.slice(0, oldState.path.length - 1),
-  });
+export function setPath(path: string[]): StateTransform {
+  return (state) => ({
+    ...state,
+    path,
+  })
 }
