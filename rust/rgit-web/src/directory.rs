@@ -1,31 +1,50 @@
-use js_sys::{
-    Array, ArrayBuffer, AsyncIterator, Function, JsString, Promise, Reflect, TypeError, Uint8Array,
-};
+use js_sys::{Array, JsString, Promise, Reflect, TypeError, Uint8Array};
 use rgit_core::directory::{DirEntry, Directory, DirectoryError, File};
 use wasm_bindgen::prelude::*;
-use web_sys::{DomException, FileSystemDirectoryHandle, FileSystemFileHandle};
+use web_sys::{DomException, FileSystemDirectoryHandle};
 
-#[wasm_bindgen(module = "/src/collect.js")]
+#[wasm_bindgen(module = "/src/directory.js")]
 extern "C" {
     #[wasm_bindgen]
-    fn collect(this: &AsyncIterator) -> Promise;
+    fn constructDirectory(handle: &FileSystemDirectoryHandle) -> Promise;
+
+    type JsWebDirectory;
+    #[wasm_bindgen(method)]
+    fn openSubdir(this: &JsWebDirectory, name: &str) -> Promise;
+    #[wasm_bindgen(method)]
+    fn listDir(this: &JsWebDirectory) -> Promise;
+    #[wasm_bindgen(method)]
+    fn openFile(this: &JsWebDirectory, name: &str) -> Promise;
+
+    type JsWebFile;
+    #[wasm_bindgen(method)]
+    fn readAll(this: &JsWebFile) -> Promise;
+    #[wasm_bindgen(method)]
+    fn readSegment(this: &JsWebFile, offset: f64, length: f64) -> Promise;
 }
 
-#[derive(Debug, Clone)]
 pub struct WebDirectory {
-    handle: web_sys::FileSystemDirectoryHandle,
+    directory: JsWebDirectory,
 }
 
-#[derive(Debug)]
+impl Clone for WebDirectory {
+    fn clone(&self) -> Self {
+        Self {
+            directory: self.directory.clone().dyn_into().unwrap(),
+        }
+    }
+}
+
 pub struct WebFile {
-    file: web_sys::File,
+    file: JsWebFile,
 }
 
 impl WebDirectory {
-    pub fn new(handle: &web_sys::FileSystemDirectoryHandle) -> Self {
-        Self {
-            handle: handle.clone(),
-        }
+    pub async fn new(handle: &web_sys::FileSystemDirectoryHandle) -> Result<Self, JsValue> {
+        let js_directory: JsWebDirectory = constructDirectory(handle).await?.dyn_into()?;
+        Ok(Self {
+            directory: js_directory,
+        })
     }
 }
 
@@ -44,42 +63,33 @@ impl Directory for WebDirectory {
 
     async fn open_subdir(&self, name: &[u8]) -> Result<Self, DirectoryError> {
         let f = async || -> Result<Self, JsValue> {
-            let handle = self
-                .handle
-                .get_directory_handle(
-                    str::from_utf8(name).map_err(|_| TypeError::new("name was not UTF-8"))?,
-                )
-                .await?;
-            let handle: FileSystemDirectoryHandle = handle.dyn_into()?;
-            Ok(Self { handle })
+            let subdir: JsWebDirectory = self
+                .directory
+                .openSubdir(str::from_utf8(name).map_err(|_| TypeError::new("name was not UTF-8"))?)
+                .await?
+                .dyn_into()?;
+            Ok(Self { directory: subdir })
         };
         f().await.map_err(to_directory_error)
     }
 
     async fn list_dir(&self) -> Result<Vec<DirEntry>, DirectoryError> {
         let f = async || -> Result<Vec<DirEntry>, JsValue> {
-            let entries_fn: Function =
-                Reflect::get(&self.handle, &JsValue::from("entries"))?.dyn_into()?;
-            let entries_iter: AsyncIterator =
-                Reflect::apply(&entries_fn, &self.handle, &Array::new())?.dyn_into()?;
-
-            let collect_res = collect(&entries_iter);
-            let collected: Array = collect_res.await?.dyn_into()?;
-            let mut out = Vec::new();
-            for val in collected {
-                let val: Array = val.dyn_into()?;
-                let name = val.at(0).as_string().ok_or_else(|| {
-                    TypeError::new(
-                        "FileSystemDirectoryHandle.entries() did not yield [string, _] pair",
-                    )
-                })?;
-                let kind: JsString =
-                    Reflect::get(&val.at(1), &JsValue::from("kind"))?.dyn_into()?;
-                if kind == "file" {
-                    out.push(DirEntry::File(name.into_bytes()));
-                } else if kind == "directory" {
-                    out.push(DirEntry::Directory(name.into_bytes()));
-                }
+            let entries: Array = self.directory.listDir().await?.dyn_into()?;
+            let directories: Array = entries.at(0).dyn_into()?;
+            let files: Array = entries.at(1).dyn_into()?;
+            let mut out: Vec<DirEntry> = Vec::new();
+            for name in directories {
+                let name: JsString = name.dyn_into()?;
+                let name: String = name.into();
+                let name: Vec<u8> = name.into_bytes();
+                out.push(DirEntry::Directory(name));
+            }
+            for name in files {
+                let name: JsString = name.dyn_into()?;
+                let name: String = name.into();
+                let name: Vec<u8> = name.into_bytes();
+                out.push(DirEntry::File(name));
             }
             Ok(out)
         };
@@ -88,15 +98,12 @@ impl Directory for WebDirectory {
 
     async fn open_file(&self, name: &[u8]) -> Result<Self::File, DirectoryError> {
         let f = async || -> Result<Self::File, JsValue> {
-            let handle = self
-                .handle
-                .get_file_handle(
-                    str::from_utf8(name).map_err(|_| TypeError::new("name was not UTF-8"))?,
-                )
-                .await?;
-            let handle: FileSystemFileHandle = handle.dyn_into()?;
-            let file: web_sys::File = handle.get_file().await?.dyn_into()?;
-            Ok(WebFile { file })
+            let js_file: JsWebFile = self
+                .directory
+                .openFile(str::from_utf8(name).map_err(|_| TypeError::new("name was not UTF-8"))?)
+                .await?
+                .dyn_into()?;
+            Ok(WebFile { file: js_file })
         };
         f().await.map_err(to_directory_error)
     }
@@ -105,8 +112,7 @@ impl Directory for WebDirectory {
 impl File for WebFile {
     async fn read_all(&mut self) -> Result<Vec<u8>, DirectoryError> {
         let f = async || -> Result<Vec<u8>, JsValue> {
-            let data: ArrayBuffer = self.file.array_buffer().await?.dyn_into()?;
-            let data = Uint8Array::new(&data);
+            let data: Uint8Array = self.file.readAll().await?.dyn_into()?;
             let mut out = vec![0u8; data.length() as usize];
             data.copy_to(&mut out);
             Ok(out)
@@ -123,18 +129,15 @@ impl File for WebFile {
             if offset > 2u64.pow(53) {
                 panic!("offset not representable as f64");
             }
-            let start: f64 = offset as f64;
-            let end = offset + u64::try_from(dest.len()).unwrap();
-            if end > 2u64.pow(53) {
-                panic!("offset + length not representable as f64");
+            let offset = offset as f64;
+            if dest.len() as u64 > 2u64.pow(53) {
+                panic!("length not representable as f64");
             }
-            let end: f64 = end as f64;
-            let sliced_blob = self.file.slice_with_f64_and_f64(start, end)?;
-            let size = sliced_blob.size() as usize;
-            let data = sliced_blob.array_buffer().await?;
-            let data = Uint8Array::new(&data);
-            data.copy_to(&mut dest[0..size]);
-            Ok(size)
+            let length = dest.len() as f64;
+            let data: Uint8Array = self.file.readSegment(offset, length).await?.dyn_into()?;
+            let bytes_read = data.length() as usize;
+            data.copy_to(&mut dest[0..bytes_read]);
+            Ok(bytes_read)
         };
         f().await.map_err(to_directory_error)
     }

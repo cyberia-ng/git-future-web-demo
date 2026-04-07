@@ -28,7 +28,7 @@ impl WebRepo {
                 }
             }
         };
-        let repo = Box::new(Repo::new(WebDirectory::new(&handle)));
+        let repo = Box::new(Repo::new(WebDirectory::new(&handle).await?));
         Ok(Self(Box::leak(repo)))
     }
 
