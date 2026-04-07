@@ -1,4 +1,4 @@
-use js_sys::JsString;
+use js_sys::{JsString, TypeError};
 use rgit_core::{ObjectId, Repo};
 use serde_wasm_bindgen::from_value;
 use wasm_bindgen::prelude::*;
@@ -22,7 +22,20 @@ impl WebRepo {
             Err(e) => {
                 let e: DomException = e.dyn_into()?;
                 if e.name() == "NotFoundError" {
-                    handle.get_directory_handle(".git").await?.dyn_into()?
+                    handle
+                        .get_directory_handle(".git")
+                        .await
+                        .map_err(|e| match e.clone().dyn_into::<DomException>() {
+                            Ok(dom_exception) => {
+                                if dom_exception.name() == "NotFoundError" {
+                                    JsValue::from(TypeError::new("Not a git repository"))
+                                } else {
+                                    JsValue::from(dom_exception)
+                                }
+                            }
+                            Err(_) => e,
+                        })?
+                        .dyn_into()?
                 } else {
                     return Err(e.into());
                 }

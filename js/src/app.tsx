@@ -1,19 +1,37 @@
 import { useEffect, useState } from "react";
 import { WebRepo } from "../pkg/rgit_web";
 import { Tree, TreeNav } from "./tree";
-import { initialAppState, reset, type AppState, type StateTransform } from "./state";
+import {
+  addError,
+  emptyErrorState,
+  initialAppState,
+  type AppState,
+  type ErrorState,
+  type ErrorStateTransform,
+  type StateTransform,
+} from "./state";
 import { emptyView, resolveView, type RepoView, type View } from "./view";
 import type { StandardProps } from "./props";
 import { BlobComponent } from "./blob";
+import { Errors } from "./errors";
 
 export function App() {
   const [repo, setRepo] = useState<{ repo: WebRepo; name: string } | null>(null);
   const [appState, setAppState] = useState<AppState>(initialAppState);
+  const [errorState, setErrorState] = useState<ErrorState>(emptyErrorState);
   function updateState(transform: StateTransform) {
     setAppState(transform(appState));
   }
+  function updateErrorState(transform: ErrorStateTransform) {
+    setErrorState(transform(errorState));
+  }
   const [view, setView] = useState<View>(emptyView);
   function handleError(e: unknown) {
+    if (e instanceof Error) {
+      updateErrorState(addError(e.message));
+    } else {
+      updateErrorState(addError("Handled an error without a message"));
+    }
     console.error(e);
   }
 
@@ -25,10 +43,13 @@ export function App() {
     const handle = await window.showDirectoryPicker();
     const repo = await WebRepo.construct(handle);
     setRepo({ repo, name: handle.name });
+    updateState(() => initialAppState);
+    updateErrorState(() => emptyErrorState);
   }
   async function closeRepo() {
     setRepo(null);
-    updateState(reset);
+    updateState(() => initialAppState);
+    updateErrorState(() => emptyErrorState);
   }
 
   return (
@@ -50,6 +71,7 @@ export function App() {
         </div>
       </header>
       <main>
+        <Errors state={errorState} updateErrorState={updateErrorState} />
         {view.type === "repo" && <Repo state={appState} view={view} updateState={updateState} />}
       </main>
     </div>
