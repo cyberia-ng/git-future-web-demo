@@ -23,7 +23,7 @@ export function TreeNav({ updateState, view }: StandardProps<TreeView | BlobView
             <a
               className={linkClassName}
               href="#"
-              onClick={() => updateState(setPath(view.state.path.slice(0, index)))}
+              onClick={() => updateState(setPath(view.state.path.slice(0, index + 1)))}
             >
               {component}
             </a>
