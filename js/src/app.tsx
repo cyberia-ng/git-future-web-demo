@@ -40,6 +40,9 @@ export function App() {
   }, [repo, appState]);
 
   async function openRepo() {
+    if (!window.showDirectoryPicker) {
+      throw new Error("This browser does not support window.showDirectoryPicker()");
+    }
     const handle = await window.showDirectoryPicker();
     const repo = await WebRepo.construct(handle);
     setRepo({ repo, name: handle.name });
