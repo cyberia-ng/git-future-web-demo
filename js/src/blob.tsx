@@ -14,9 +14,22 @@ export function BlobComponent({ state, view, updateState }: StandardProps<BlobVi
     }
   }
   switch (content.type) {
-    case "text":
-      return <pre>{content.content}</pre>;
+    case "text": {
+      const lines = content.content.split("\n");
+      return (
+        <div className="container">
+          {lines.map((line, idx) => (
+            <div className="row">
+              <div className="col-1 text-end user-select-none text-secondary">{idx + 1}</div>
+              <div className="col font-monospace" key={idx}>
+                {line}
+              </div>
+            </div>
+          ))}
+        </div>
+      );
+    }
     case "binary":
-      return <>Binary data</>;
+      return <div className="alert alert-warning">Binary data</div>;
   }
 }
