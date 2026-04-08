@@ -36,8 +36,4 @@ export type TreeEntry = {
   entry_type: "Tree" | "Symlink" | "File" | "Executable" | "Commit";
 };
 
-export type RefName =
-  | { type: "Branch"; value: string }
-  | { type: "Tag"; value: string }
-  | { type: "Remote"; value: string }
-  | { type: "Head" };
+export type RefName = { type: "Head" } | { type: "Ref"; value: string };

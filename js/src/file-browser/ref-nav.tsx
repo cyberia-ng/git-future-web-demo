@@ -4,13 +4,14 @@ import { setRef, type FileBrowserState } from "../state";
 import { ExternalLink, GitBranch, GitCommit, Tag, type IconProps } from "react-feather";
 import type { RefName } from "../types";
 import type { FileBrowserView, RepoView } from "../view";
+import { assertNever } from "../assert-never";
 
 export function RefNav({ view, updateState }: StandardProps<FileBrowserState, FileBrowserView>) {
   const sortedRefs = view.model.refs.toSorted((a, b) => {
-    const typeOrderDiff = refTypeOrder(a.type) - refTypeOrder(b.type);
+    const typeOrderDiff = refTypeOrder(a) - refTypeOrder(b);
     if (typeOrderDiff !== 0) return typeOrderDiff;
     else if (a.type === "Head" || b.type === "Head") {
-      // a and b are same type, but we can't have two heads
+      // a and b are same type, but we can't have two heads or two stashes
       throw new Error("unreachable");
     } else {
       return a.value < b.value ? -1 : 1;
@@ -55,32 +56,56 @@ function RefIcon({
     case "Head": {
       return <GitCommit {...props} />;
     }
-    case "Branch": {
-      return <GitBranch {...props} />;
-    }
-    case "Tag": {
-      return <Tag {...props} />;
-    }
-    case "Remote": {
-      return <ExternalLink {...props} />;
+    case "Ref": {
+      switch (refName.value.split("/")[0]!) {
+        case "heads": {
+          return <GitBranch {...props} />;
+        }
+        case "tags": {
+          return <Tag {...props} />;
+        }
+        case "remotes": {
+          return <ExternalLink {...props} />;
+        }
+        default: {
+          return <GitCommit {...props} />;
+        }
+      }
     }
   }
+  assertNever(refName);
 }
 
 function refText(refName: RefName) {
   if (refName.type === "Head") return "HEAD";
-  else return refName.value;
+  else {
+    const [_, ...rest] = refName.value.split("/");
+    if (rest.length === 0) {
+      return refName.value;
+    } else {
+      return rest.join("/");
+    }
+  }
 }
 
-function refTypeOrder(refType: RefName["type"]): number {
-  switch (refType) {
+function refTypeOrder(ref: RefName): number {
+  switch (ref.type) {
     case "Head":
       return 0;
-    case "Branch":
-      return 1;
-    case "Remote":
-      return 2;
-    case "Tag":
-      return 3;
+    case "Ref": {
+      const [first] = ref.value.split("/");
+      switch (first) {
+        case "stash":
+          return 1;
+        case "heads":
+          return 2;
+        case "remotes":
+          return 3;
+        case "tags":
+          return 4;
+        default:
+          return 5;
+      }
+    }
   }
 }
