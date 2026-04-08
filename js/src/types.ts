@@ -22,9 +22,9 @@ export type GitObject = {
     target: string;
     tag_type: "Commit" | "Blob" | "Tree" | "Tag";
     name: string;
-    tagger_name: string | null;
-    tagger_email: string | null;
-    tag_date: string | null;
+    tagger_name?: string;
+    tagger_email?: string;
+    tag_date?: string;
     message: string;
   }
   | { type: "Blob"; data: Uint8Array };
