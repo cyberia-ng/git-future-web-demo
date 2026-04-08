@@ -1,5 +1,5 @@
 import { WebRefName, type WebRepo } from "../pkg/rgit_web";
-import type { AppState } from "./state";
+import { setPath, type AppState, type Mutator } from "./state";
 import type { GitObject, RefName, TreeEntry } from "./types";
 
 export type ViewModel<S, M> = { state: S; model: M };
@@ -40,7 +40,8 @@ export type BlobView = {
 export async function resolveView(
   repoState: { name: string; repo: WebRepo } | null,
   state: AppState,
-): Promise<DerivedView> {
+  updateState: (mutator: Mutator<AppState>) => void,
+): Promise<DerivedView|null> {
   if (repoState === null) {
     return emptyView;
   }
@@ -55,14 +56,18 @@ export async function resolveView(
       const tree: GitObject = await peelToTree(repo, objectId);
 
       let viewingObject: GitObject = tree;
-      let workingPath = [...state.inner.path];
       let pathComponent: string | undefined;
-      while (workingPath.length !== 0) {
-        pathComponent = workingPath.shift();
+      for (
+        let pathComponentIdx = 0;
+        pathComponentIdx < state.inner.path.length;
+        pathComponentIdx++
+      ) {
+        pathComponent = state.inner.path[pathComponentIdx];
         if (viewingObject.body.type === "Tree") {
           const entry = viewingObject.body.entries.find((entry) => entry.name === pathComponent);
           if (entry === undefined) {
-            throw new Error("Tree entry not found for path");
+            updateState(setPath(state.inner.path.slice(0, pathComponentIdx)));
+            return null;
           }
           viewingObject = (await repo.lookup_object(entry.id)).to_js();
         } else {

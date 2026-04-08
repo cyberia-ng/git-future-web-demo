@@ -31,11 +31,6 @@ export function App() {
   const [viewState, setViewState] = useState<ViewModel<AppState, DerivedView>>(
     viewModel(appState, emptyView),
   );
-  useEffect(() => {
-    resolveView(repo, appState)
-      .then((model) => setViewState({ state: appState, model }))
-      .catch(handleError);
-  }, [repo, appState]);
 
   function updateState(mutator: Mutator<AppState>) {
     setAppState(produce(appState, mutator));
@@ -51,6 +46,12 @@ export function App() {
     }
     console.error(e);
   }
+
+  useEffect(() => {
+    resolveView(repo, appState, updateState)
+      .then((model) => model && setViewState({ state: appState, model }))
+      .catch(handleError);
+  }, [repo, appState]);
 
   async function openRepo() {
     if (!window.showDirectoryPicker) {
