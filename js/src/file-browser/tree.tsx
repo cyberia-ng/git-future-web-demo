@@ -1,62 +1,41 @@
+import type { ReactNode } from "react";
 import type { StandardProps } from "../props";
 import { appendPath, type FileBrowserState } from "../state";
 import type { TreeEntry } from "../types";
 import { type TreeView } from "../view";
+import { ExternalLink, File, Folder, Link } from "react-feather";
 
 export function Tree({ view, updateState }: StandardProps<FileBrowserState, TreeView>) {
   const directories = view.model.entries.filter((entry) => entry.entry_type === "Tree");
   const others = view.model.entries.filter((entry) => entry.entry_type !== "Tree");
-  function BasicEntry({
-    icon,
-    ariaLabel,
-    name,
-    onClick,
-  }: {
-    icon: string;
-    ariaLabel: string;
-    name: string;
-    onClick: () => void;
-  }) {
-    return (
-      <a className="list-group-item list-group-item-action" href="#" onClick={onClick}>
-        <div className="d-flex align-items-center">
-          <div className="me-2">
-            <i className={`text-body bi bi-${icon}`} aria-label={ariaLabel} />
-          </div>
-          <div>{name}</div>
-        </div>
-      </a>
-    );
-  }
   function Entry({ entry }: { entry: TreeEntry }) {
-    let icon;
-    let ariaLabel;
+    let icon: ReactNode;
     switch (entry.entry_type) {
       case "Tree":
-        icon = "folder-fill";
-        ariaLabel = "subdirectory";
+        icon = <Folder aria-label="subdirectory" size={20} />;
         break;
       case "File":
       case "Executable":
-        icon = "file";
-        ariaLabel = "file";
+        icon = <File aria-label="file" size={20} />;
         break;
       case "Symlink":
-        icon = "link-45deg";
-        ariaLabel = "symlink";
+        icon = <Link aria-label="symlink" size={20}/>;
         break;
       case "Commit":
-        icon = "folder-symlink";
-        ariaLabel = "submodule";
+        icon = <ExternalLink aria-label="submodule" size={20}/>;
         break;
     }
     return (
-      <BasicEntry
-        name={entry.name}
-        icon={icon}
-        ariaLabel={ariaLabel}
+      <a
+        className="list-group-item list-group-item-action"
+        href="#"
         onClick={() => updateState(appendPath(entry.name))}
-      />
+      >
+        <div className="d-flex align-items-center">
+          <div className="me-2">{icon}</div>
+          <div>{entry.name}</div>
+        </div>
+      </a>
     );
   }
   return (

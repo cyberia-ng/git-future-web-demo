@@ -13,7 +13,8 @@
     "immer": "^11.1.4",
     "prism-react-renderer": "^2.4.1",
     "react": "^19.2.4",
-    "react-dom": "^19.2.4"
+    "react-dom": "^19.2.4",
+    "react-feather": "^2.0.10"
   },
   "devDependencies": {
     "@types/react": "^19.2.14",

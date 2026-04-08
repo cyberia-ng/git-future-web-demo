@@ -17,7 +17,16 @@ export type GitObject = {
     type: "Tree";
     entries: Array<TreeEntry>;
   }
-  | { type: "Tag" }
+  | {
+    type: "Tag";
+    target: string;
+    tag_type: "Commit" | "Blob" | "Tree" | "Tag";
+    name: string;
+    tagger_name: string | null;
+    tagger_email: string | null;
+    tag_date: string | null;
+    message: string;
+  }
   | { type: "Blob"; data: Uint8Array };
 };
 

@@ -1,6 +1,6 @@
-import type { WebRepo } from "../pkg/rgit_web";
+import { WebRefName, type WebRepo } from "../pkg/rgit_web";
 import type { AppState } from "./state";
-import type { GitObject, TreeEntry } from "./types";
+import type { GitObject, RefName, TreeEntry } from "./types";
 
 export type ViewModel<S, M> = { state: S; model: M };
 export type DerivedView = EmptyView | RepoView;
@@ -23,6 +23,7 @@ export type RepoView = {
 
 export type FileBrowserView = {
   type: "file browser";
+  refs: RefName[];
   inner: TreeView | BlobView;
 };
 
@@ -48,14 +49,12 @@ export async function resolveView(
     case "initial":
       return emptyView;
     case "file browser": {
-      const head = await repo.head();
-      const commit: GitObject = (await head.resolve_to_object()).to_js();
-      if (commit.body.type !== "Commit") {
-        throw new Error("HEAD did not point to a commit");
-      }
+      const refs: RefName[] = (await repo.ref_names()).map((n) => n.to_js());
+      const webRef = await repo.lookup_ref(new WebRefName(state.inner.ref));
+      const objectId: string = await webRef.resolve_object_id();
+      const tree: GitObject = await peelToTree(repo, objectId);
 
-      let viewingObject: GitObject = (await repo.lookup_object(commit.body.tree)).to_js();
-
+      let viewingObject: GitObject = tree;
       let workingPath = [...state.inner.path];
       let pathComponent: string | undefined;
       while (workingPath.length !== 0) {
@@ -77,6 +76,7 @@ export async function resolveView(
             name,
             inner: {
               type: "file browser",
+              refs,
               inner: { type: "tree", entries: viewingObject.body.entries },
             },
           };
@@ -87,6 +87,7 @@ export async function resolveView(
             name,
             inner: {
               type: "file browser",
+              refs,
               inner: { type: "blob", content: viewingObject.body.data },
             },
           };
@@ -95,6 +96,23 @@ export async function resolveView(
           throw new Error("not implemented");
         }
       }
+    }
+  }
+}
+
+async function peelToTree(repo: WebRepo, objectId: string): Promise<GitObject> {
+  const object: GitObject = (await repo.lookup_object(objectId)).to_js();
+  switch (object.body.type) {
+    case "Tree":
+      return object;
+    case "Tag": {
+      return peelToTree(repo, object.body.target);
+    }
+    case "Commit": {
+      return peelToTree(repo, object.body.tree);
+    }
+    case "Blob": {
+      throw new Error("Cannot peel a blob to a tree");
     }
   }
 }

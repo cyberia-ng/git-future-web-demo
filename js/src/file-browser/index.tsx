@@ -3,6 +3,8 @@ import type { StandardProps } from "../props";
 import { setPath, type FileBrowserState } from "../state";
 import { viewModel, type FileBrowserView } from "../view";
 import { Tree } from "./tree";
+import { RefNav } from "./ref-nav";
+import { Folder } from "react-feather";
 
 export function FileBrowser({
   view,
@@ -32,38 +34,38 @@ export function FileBrowserNav({
   updateState,
 }: StandardProps<FileBrowserState, FileBrowserView>) {
   const linkClassName = "link-body-emphasis fw-semibold text-decoration-none";
-  const rootIcon = <i className="bi bi-house-door-fill" aria-label="root" />;
+  const rootIcon = <Folder aria-label="root" size={20} />;
   return (
-    <div className="bg-body-tertiary rounded-3 mb-3 d-flex">
-      <div className="p-3">Refnav</div>
-      <nav aria-label="tree-breadcrumbs">
-        <ol className="breadcrumb p-3 mb-0">
-          <li className="breadcrumb-item">
-            {view.state.path.length === 0 ? (
-              rootIcon
-            ) : (
+    <div className="bg-body-tertiary rounded-3 mb-3 d-flex align-items-center">
+      <div className="p-3">
+        <RefNav view={view} updateState={updateState} />
+      </div>
+      {view.state.path.length !== 0 && (
+        <nav aria-label="tree-breadcrumbs">
+          <ol className="breadcrumb p-3 mb-0">
+            <li className="breadcrumb-item">
               <a className={linkClassName} href="#" onClick={() => updateState(setPath([]))}>
                 {rootIcon}
               </a>
-            )}
-          </li>
-          {view.state.path.slice(0, view.state.path.length - 1).map((component, index) => (
-            <li key={component} className="breadcrumb-item">
-              <a
-                className={linkClassName}
-                href="#"
-                onClick={() => updateState(setPath(view.state.path.slice(0, index + 1)))}
-              >
-                {component}
-              </a>
             </li>
-          ))}
-          {view.state.path.length > 0 && (
-            <li className="breadcrumb-item">{view.state.path[view.state.path.length - 1]}</li>
-          )}
-          {view.model.inner.type === "tree" && <li className="breadcrumb-item"></li>}
-        </ol>
-      </nav>
+            {view.state.path.slice(0, view.state.path.length - 1).map((component, index) => (
+              <li key={component} className="breadcrumb-item">
+                <a
+                  className={linkClassName}
+                  href="#"
+                  onClick={() => updateState(setPath(view.state.path.slice(0, index + 1)))}
+                >
+                  {component}
+                </a>
+              </li>
+            ))}
+            {view.state.path.length > 0 && (
+              <li className="breadcrumb-item">{view.state.path[view.state.path.length - 1]}</li>
+            )}
+            {view.model.inner.type === "tree" && <li className="breadcrumb-item"></li>}
+          </ol>
+        </nav>
+      )}
     </div>
   );
 }

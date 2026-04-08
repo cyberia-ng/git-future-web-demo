@@ -46,6 +46,14 @@ export function setPath(path: string[]): Mutator<AppState> {
   };
 }
 
+export function setRef(ref: RefName): Mutator<AppState> {
+  return (draft) => {
+    if (draft.type === "file browser") {
+      draft.inner.ref = ref;
+    }
+  };
+}
+
 export const emptyErrorState: ErrorState = {
   messages: [],
 };

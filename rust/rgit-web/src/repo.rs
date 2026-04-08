@@ -50,9 +50,15 @@ impl WebRepo {
         Ok(WebRef(head))
     }
 
-    pub async fn refs(&self) -> Result<Vec<WebRefName>, JsValue> {
+    pub async fn ref_names(&self) -> Result<Vec<WebRefName>, JsValue> {
         let refs = self.0.ref_names().await.map_err(to_js_error)?;
         Ok(refs.into_iter().map(WebRefName).collect())
+    }
+
+    pub async fn lookup_ref(&self, ref_name: &WebRefName) -> Result<WebRef, JsValue> {
+        let ref_name = &ref_name.0;
+        let reference = self.0.lookup_ref(ref_name).await.map_err(to_js_error)?;
+        Ok(WebRef(reference))
     }
 
     pub async fn lookup_object(&self, id: JsString) -> Result<WebObject, JsValue> {
