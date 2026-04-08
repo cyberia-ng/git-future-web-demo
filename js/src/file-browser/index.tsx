@@ -34,7 +34,7 @@ export function FileBrowserNav({
   updateState,
 }: StandardProps<FileBrowserState, FileBrowserView>) {
   const linkClassName = "link-body-emphasis fw-semibold text-decoration-none";
-  const rootIcon = <Folder aria-label="root" size={20} />;
+  const rootIcon = <Folder aria-label="root" size={20} style={{ translate: "0 -0.1lh" }} />;
   return (
     <div className="bg-body-tertiary rounded-3 mb-3 d-flex align-items-center">
       <div className="p-3">

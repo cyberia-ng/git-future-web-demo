@@ -12,17 +12,17 @@ export function Tree({ view, updateState }: StandardProps<FileBrowserState, Tree
     let icon: ReactNode;
     switch (entry.entry_type) {
       case "Tree":
-        icon = <Folder aria-label="subdirectory" size={20} />;
+        icon = <Folder aria-label="subdirectory" size={20} style={{ translate: "0 -0.1lh" }} />;
         break;
       case "File":
       case "Executable":
-        icon = <File aria-label="file" size={20} />;
+        icon = <File aria-label="file" size={20} style={{ translate: "0 -0.1lh" }} />;
         break;
       case "Symlink":
-        icon = <Link aria-label="symlink" size={20}/>;
+        icon = <Link aria-label="symlink" size={20} style={{ translate: "0 -0.1lh" }} />;
         break;
       case "Commit":
-        icon = <ExternalLink aria-label="submodule" size={20}/>;
+        icon = <ExternalLink aria-label="submodule" size={20} style={{ translate: "0 -0.1lh" }} />;
         break;
     }
     return (

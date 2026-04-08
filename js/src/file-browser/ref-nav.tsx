@@ -19,7 +19,7 @@ export function RefNav({ view, updateState }: StandardProps<FileBrowserState, Fi
   return (
     <div className="dropdown">
       <button
-        className="btn btn-secondary dropdown-toggle"
+        className="btn btn-secondary dropdown-toggle d-flex align-items-center"
         type="button"
         data-bs-toggle="dropdown"
         aria-expanded="false"
@@ -30,7 +30,11 @@ export function RefNav({ view, updateState }: StandardProps<FileBrowserState, Fi
       <ul className="dropdown-menu">
         {sortedRefs.map((ref) => (
           <li key={refText(ref)}>
-            <a className="dropdown-item" href="#" onClick={() => updateState(setRef(ref))}>
+            <a
+              className="dropdown-item d-flex align-items-center"
+              href="#"
+              onClick={() => updateState(setRef(ref))}
+            >
               <RefIcon refName={ref} size={20} className="me-2" />
               {refText(ref)}
             </a>
