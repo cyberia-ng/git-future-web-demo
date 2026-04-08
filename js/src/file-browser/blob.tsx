@@ -1,7 +1,7 @@
 import type { StandardProps } from "../props";
 import type { FileBrowserState } from "../state";
 import type { BlobView } from "../view";
-import { Highlight } from "prism-react-renderer";
+import { Highlight, themes } from "prism-react-renderer";
 
 export function BlobComponent({ view, updateState }: StandardProps<FileBrowserState, BlobView>) {
   const decoder = new TextDecoder("utf-8", { fatal: true });
@@ -21,8 +21,9 @@ export function BlobComponent({ view, updateState }: StandardProps<FileBrowserSt
       const extension = filenameSplit[filenameSplit.length - 1];
       const language = extension === undefined ? "" : (EXTENSIONS[extension] ?? "");
       const nLines = content.content.split("\n").length;
+      const maxDigits = Math.ceil(Math.log10(nLines + 1));
       return (
-        <Highlight code={content.content} language={language}>
+        <Highlight code={content.content} language={language} theme={themes.gruvboxMaterialDark}>
           {({ style, tokens, getLineProps, getTokenProps }) => (
             <div
               style={style}
@@ -33,7 +34,7 @@ export function BlobComponent({ view, updateState }: StandardProps<FileBrowserSt
                   <div
                     className="col text-end user-select-none text-secondary bg-body-secondary"
                     style={{
-                      maxWidth: `calc(${Math.ceil(Math.log10(nLines))}ch + var(--bs-gutter-x))`,
+                      maxWidth: `calc(${maxDigits}ch + var(--bs-gutter-x))`,
                       ...(idx === 0 ? { paddingTop: ".5rem" } : {}),
                     }}
                   >
