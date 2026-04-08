@@ -1,25 +1,49 @@
-export type AppState = {
+import type { RefName } from "./types";
+
+export type AppState =
+  | { type: "initial" }
+  | {
+    type: "file browser";
+    inner: FileBrowserState;
+  };
+
+export const initialAppState: AppState = {
+  type: "initial",
+};
+
+export type FileBrowserState = {
+  ref: RefName;
   path: string[];
 };
 
-export const initialAppState: AppState = {
-  path: [],
+export const initialFileBrowserState: AppState = {
+  type: "file browser",
+  inner: {
+    ref: { type: "Head" },
+    path: [],
+  },
 };
 
-export type StateTransform = (state: AppState) => AppState;
+export type Mutator<State> = (draft: State) => State | undefined;
 
-export function appendPath(component: string): StateTransform {
-  return (state) => ({
-    ...state,
-    path: [...state.path, component],
-  });
+export function reset(): Mutator<AppState> {
+  return (_) => initialAppState;
 }
 
-export function setPath(path: string[]): StateTransform {
-  return (state) => ({
-    ...state,
-    path,
-  });
+export function appendPath(component: string): Mutator<AppState> {
+  return (draft) => {
+    if (draft.type === "file browser") {
+      draft.inner.path.push(component);
+    }
+  };
+}
+
+export function setPath(path: string[]): Mutator<AppState> {
+  return (draft) => {
+    if (draft.type === "file browser") {
+      draft.inner.path = path;
+    }
+  };
 }
 
 export const emptyErrorState: ErrorState = {
@@ -30,18 +54,18 @@ export type ErrorState = {
   messages: string[];
 };
 
-export type ErrorStateTransform = (state: ErrorState) => ErrorState;
-
-export function addError(message: string): ErrorStateTransform {
-  return (state) => ({
-    ...state,
-    messages: [...state.messages, message],
-  });
+export function resetErrors(): Mutator<ErrorState> {
+  return (_) => emptyErrorState;
 }
 
-export function dismissError(idx: number): ErrorStateTransform {
-  return (state) => ({
-    ...state,
-    messages: [...state.messages.slice(0, idx), ...state.messages.slice(idx + 1)],
-  });
+export function addError(message: string): Mutator<ErrorState> {
+  return (draft) => {
+    draft.messages.push(message);
+  };
+}
+
+export function dismissError(idx: number): Mutator<ErrorState> {
+  return (draft) => {
+    draft.messages = [...draft.messages.slice(0, idx), ...draft.messages.slice(idx + 1)];
+  };
 }

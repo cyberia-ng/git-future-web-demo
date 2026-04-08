@@ -1,9 +1,9 @@
-import type { StateTransform } from "./state";
+import type { AppState, Mutator } from "./state";
 import type { ViewModel } from "./view";
 
-export type UpdateState = (transformer: StateTransform) => void;
+export type UpdateState = (mutator: Mutator<AppState>) => void;
 
-export type StandardProps<T> = {
-  view: ViewModel<T>;
+export type StandardProps<S, M> = {
+  view: ViewModel<S, M>;
   updateState: UpdateState;
 };

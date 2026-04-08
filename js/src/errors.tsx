@@ -1,11 +1,11 @@
-import { dismissError, type ErrorState, type ErrorStateTransform } from "./state";
+import { dismissError, type ErrorState, type Mutator } from "./state";
 
 export function Errors({
   state,
   updateErrorState,
 }: {
   state: ErrorState;
-  updateErrorState: (transform: ErrorStateTransform) => void;
+  updateErrorState: (mutator: Mutator<ErrorState>) => void;
 }) {
   return (
     <>

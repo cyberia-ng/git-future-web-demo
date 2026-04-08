@@ -1,41 +1,48 @@
 import { useEffect, useState } from "react";
 import { WebRepo } from "../pkg/rgit_web";
-import { Tree, TreeNav } from "./tree";
 import {
   addError,
   emptyErrorState,
   initialAppState,
+  initialFileBrowserState,
+  reset,
+  resetErrors,
   type AppState,
   type ErrorState,
-  type ErrorStateTransform,
-  type StateTransform,
+  type Mutator,
 } from "./state";
 import {
   emptyView,
   resolveView,
-  derivedViewOf,
+  viewModel,
   type DerivedView,
   type RepoView,
   type ViewModel,
 } from "./view";
 import type { StandardProps } from "./props";
-import { BlobComponent } from "./blob";
 import { Errors } from "./errors";
+import { produce } from "immer";
+import { FileBrowser } from "./file-browser/index";
 
 export function App() {
   const [repo, setRepo] = useState<{ repo: WebRepo; name: string } | null>(null);
   const [appState, setAppState] = useState<AppState>(initialAppState);
   const [errorState, setErrorState] = useState<ErrorState>(emptyErrorState);
-  function updateState(transform: StateTransform) {
-    setAppState(transform(appState));
+  const [viewState, setViewState] = useState<ViewModel<AppState, DerivedView>>(
+    viewModel(appState, emptyView),
+  );
+  useEffect(() => {
+    resolveView(repo, appState)
+      .then((model) => setViewState({ state: appState, model }))
+      .catch(handleError);
+  }, [repo, appState]);
+
+  function updateState(mutator: Mutator<AppState>) {
+    setAppState(produce(appState, mutator));
   }
-  function updateErrorState(transform: ErrorStateTransform) {
-    setErrorState(transform(errorState));
+  function updateErrorState(mutator: Mutator<ErrorState>) {
+    setErrorState(produce(errorState, mutator));
   }
-  const [viewState, setViewState] = useState<ViewModel<DerivedView>>({
-    state: appState,
-    model: emptyView,
-  });
   function handleError(e: unknown) {
     if (e instanceof Error) {
       updateErrorState(addError(e.message));
@@ -45,12 +52,6 @@ export function App() {
     console.error(e);
   }
 
-  useEffect(() => {
-    resolveView(repo, appState)
-      .then((derived) => setViewState({ state: appState, model: derived }))
-      .catch(handleError);
-  }, [repo, appState]);
-
   async function openRepo() {
     if (!window.showDirectoryPicker) {
       throw new Error("This browser does not support window.showDirectoryPicker()");
@@ -58,13 +59,13 @@ export function App() {
     const handle = await window.showDirectoryPicker();
     const repo = await WebRepo.construct(handle);
     setRepo({ repo, name: handle.name });
-    updateState(() => initialAppState);
-    updateErrorState(() => emptyErrorState);
+    updateState(() => initialFileBrowserState);
+    updateErrorState(resetErrors());
   }
   async function closeRepo() {
     setRepo(null);
-    updateState(() => initialAppState);
-    updateErrorState(() => emptyErrorState);
+    updateState(reset());
+    updateErrorState(resetErrors());
   }
 
   return (
@@ -76,7 +77,7 @@ export function App() {
           </h4>
         </div>
         <div>
-          {repo === null ? (
+          {viewState.state.type === "initial" ? (
             <button onClick={() => openRepo().catch(handleError)} className="btn btn-primary">
               Open repo
             </button>
@@ -90,29 +91,27 @@ export function App() {
       <main>
         <Errors state={errorState} updateErrorState={updateErrorState} />
         {viewState.model.type === "repo" && (
-          <Repo view={derivedViewOf(viewState, viewState.model)} updateState={updateState} />
+          <Repo view={viewModel(viewState.state, viewState.model)} updateState={updateState} />
         )}
       </main>
     </div>
   );
 }
 
-function Repo({ view, updateState }: StandardProps<RepoView>) {
-  const nav = <TreeNav view={derivedViewOf(view, view.model.subView)} updateState={updateState} />;
-  switch (view.model.subView.type) {
-    case "tree":
+function Repo({ view, updateState }: StandardProps<AppState, RepoView>) {
+  switch (view.state.type) {
+    case "initial":
+      return <></>;
+    case "file browser": {
+      if (view.model.inner.type !== "file browser") {
+        throw new Error("unreachable");
+      }
       return (
-        <>
-          {nav}
-          <Tree view={derivedViewOf(view, view.model.subView)} updateState={updateState} />
-        </>
+        <FileBrowser
+          view={viewModel(view.state.inner, view.model.inner)}
+          updateState={updateState}
+        />
       );
-    case "blob":
-      return (
-        <>
-          {nav}
-          <BlobComponent view={derivedViewOf(view, view.model.subView)} updateState={updateState} />
-        </>
-      );
+    }
   }
 }
