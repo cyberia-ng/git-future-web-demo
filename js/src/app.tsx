@@ -23,8 +23,12 @@ import type { StandardProps } from "./props";
 import { Errors } from "./errors";
 import { produce } from "immer";
 import { FileBrowser } from "./file-browser/index";
+import { fakeViewModel } from "./fake-view";
+import { assertNever } from "./assert-never";
+import { CommitView } from "./commit-view";
 
 export function App() {
+  const [fake, setFake] = useState(true);
   const [repo, setRepo] = useState<{ repo: WebRepo; name: string } | null>(null);
   const [appState, setAppState] = useState<AppState>(initialAppState);
   const [errorState, setErrorState] = useState<ErrorState>(emptyErrorState);
@@ -48,10 +52,21 @@ export function App() {
   }
 
   useEffect(() => {
-    resolveView(repo, appState, updateState)
-      .then((model) => model && setViewState({ state: appState, model }))
-      .catch(handleError);
-  }, [repo, appState]);
+    if (fake) {
+      setAppState(fakeViewModel.state);
+      setViewState(fakeViewModel);
+    } else {
+      resolveView(repo, appState)
+        .then((modelOrMutator) => {
+          if (typeof modelOrMutator === "function") {
+            updateState(modelOrMutator);
+          } else {
+            setViewState({ state: appState, model: modelOrMutator });
+          }
+        })
+        .catch(handleError);
+    }
+  }, [fake, repo, appState]);
 
   async function openRepo() {
     if (!window.showDirectoryPicker) {
@@ -64,19 +79,28 @@ export function App() {
     updateErrorState(resetErrors());
   }
   async function closeRepo() {
+    setFake(false);
     setRepo(null);
     updateState(reset());
     updateErrorState(resetErrors());
   }
+  const development = (import.meta as any).env.NODE_ENV === "development";
 
   return (
     <div className="col-lg-8 mx-auto p-4 py-md-5">
-      <header className="d-flex pb-3 mb-5 border-bottom">
+      <header className="d-flex flex-wrap pb-3 mb-5 border-bottom">
         <div className="flex-grow-1">
           <h4 className="mb-0">
             {viewState.model.type === "repo" ? viewState.model.name : "rgit-web"}
           </h4>
         </div>
+        {development && (
+          <div>
+            <button className="btn btn-secondary me-3" onClick={() => setFake(true)}>
+              Use fake data
+            </button>
+          </div>
+        )}
         <div>
           {viewState.state.type === "initial" ? (
             <button onClick={() => openRepo().catch(handleError)} className="btn btn-primary">
@@ -108,11 +132,17 @@ function Repo({ view, updateState }: StandardProps<AppState, RepoView>) {
         throw new Error("unreachable");
       }
       return (
-        <FileBrowser
-          view={viewModel(view.state.inner, view.model.inner)}
-          updateState={updateState}
-        />
+        <FileBrowser view={viewModel(view.state, view.model.inner)} updateState={updateState} />
+      );
+    }
+    case "commit view": {
+      if (view.model.inner.type !== "commit view") {
+        throw new Error("unreachable");
+      }
+      return (
+        <CommitView view={viewModel(view.state, view.model.inner)} updateState={updateState} />
       );
     }
   }
+  assertNever(view.state);
 }

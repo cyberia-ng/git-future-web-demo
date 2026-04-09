@@ -1,6 +1,6 @@
 import type { ReactNode } from "react";
 import type { StandardProps } from "../props";
-import { setRef, type FileBrowserState } from "../state";
+import { setFileBrowserRef, type FileBrowserCommit, type FileBrowserState } from "../state";
 import { ExternalLink, GitBranch, GitCommit, Tag, type IconProps } from "react-feather";
 import type { RefName } from "../types";
 import type { FileBrowserView, RepoView } from "../view";
@@ -25,8 +25,8 @@ export function RefNav({ view, updateState }: StandardProps<FileBrowserState, Fi
         data-bs-toggle="dropdown"
         aria-expanded="false"
       >
-        <RefIcon refName={view.state.ref} size={20} className="me-2" />
-        {refText(view.state.ref)}
+        <CommitIcon commit={view.state.commit} size={20} className="me-2" />
+        {commitText(view.state.commit)}
       </button>
       <ul className="dropdown-menu">
         {sortedRefs.map((ref) => (
@@ -34,9 +34,9 @@ export function RefNav({ view, updateState }: StandardProps<FileBrowserState, Fi
             <a
               className="dropdown-item d-flex align-items-center"
               href="#"
-              onClick={() => updateState(setRef(ref))}
+              onClick={() => updateState(setFileBrowserRef(ref))}
             >
-              <RefIcon refName={ref} size={20} className="me-2" />
+              <RefIcon ref={ref} size={20} className="me-2" />
               {refText(ref)}
             </a>
           </li>
@@ -46,18 +46,27 @@ export function RefNav({ view, updateState }: StandardProps<FileBrowserState, Fi
   );
 }
 
+function CommitIcon({ commit, ...props }: { commit: FileBrowserCommit } & IconProps) {
+  switch (commit.type) {
+    case "detached":
+      return <GitCommit {...props} />;
+    case "ref":
+      return RefIcon({ ref: commit.ref, ...props });
+  }
+}
+
 function RefIcon({
-  refName,
+  ref,
   ...props
 }: {
-  refName: RefName;
+  ref: RefName;
 } & IconProps) {
-  switch (refName.type) {
+  switch (ref.type) {
     case "Head": {
       return <GitCommit {...props} />;
     }
     case "Ref": {
-      switch (refName.value.split("/")[0]!) {
+      switch (ref.value.split("/")[0]!) {
         case "heads": {
           return <GitBranch {...props} />;
         }
@@ -73,7 +82,16 @@ function RefIcon({
       }
     }
   }
-  assertNever(refName);
+  assertNever(ref);
+}
+
+function commitText(commit: FileBrowserCommit): string {
+  switch (commit.type) {
+    case "detached":
+      return commit.id.slice(0, 8);
+    case "ref":
+      return refText(commit.ref);
+  }
 }
 
 function refText(refName: RefName) {
