@@ -28,7 +28,8 @@ import { assertNever } from "./assert-never";
 import { CommitView } from "./commit-view";
 
 export function App() {
-  const [fake, setFake] = useState(true);
+  const development = (import.meta as any).env.NODE_ENV === "development";
+  const [fake, setFake] = useState(development);
   const [repo, setRepo] = useState<{ repo: WebRepo; name: string } | null>(null);
   const [appState, setAppState] = useState<AppState>(initialAppState);
   const [errorState, setErrorState] = useState<ErrorState>(emptyErrorState);
@@ -84,7 +85,6 @@ export function App() {
     updateState(reset());
     updateErrorState(resetErrors());
   }
-  const development = (import.meta as any).env.NODE_ENV === "development";
 
   return (
     <div className="col-lg-8 mx-auto p-4 py-md-5">
