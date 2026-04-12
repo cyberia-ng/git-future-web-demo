@@ -1,5 +1,5 @@
 use js_sys::JsString;
-use rgit_core::{directory::DirectoryError, error::Error};
+use rgit_core::{DirectoryError, Error};
 use serde_wasm_bindgen::to_value;
 use wasm_bindgen::JsValue;
 use wasm_bindgen::prelude::*;
