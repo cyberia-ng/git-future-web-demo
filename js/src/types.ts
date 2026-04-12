@@ -1,46 +1,41 @@
 export type Commit = {
   id: string;
-  body: {
-    type: "Commit";
-    author_name: string;
-    author_email: string;
-    author_date: string;
-    committer_name: string;
-    committer_email: string;
-    commit_date: string;
-    tree: string;
-    parents: string[];
-    message: string;
-  };
+  author_name: string;
+  author_email: string;
+  author_date: string;
+  committer_name: string;
+  committer_email: string;
+  commit_date: string;
+  tree: string;
+  parents: string[];
+  message: string;
 };
 export type Tree = {
   id: string;
-  body: {
-    type: "Tree";
-    entries: Array<TreeEntry>;
-  };
+  entries: Array<TreeEntry>;
 };
 
 export type Tag = {
   id: string;
-  body: {
-    type: "Tag";
-    target: string;
-    tag_type: "Commit" | "Blob" | "Tree" | "Tag";
-    name: string;
-    tagger_name?: string;
-    tagger_email?: string;
-    tag_date?: string;
-    message: string;
-  };
+  target: string;
+  tag_type: "Commit" | "Blob" | "Tree" | "Tag";
+  name: string;
+  tagger_name?: string;
+  tagger_email?: string;
+  tag_date?: string;
+  message: string;
 };
 
 export type Blob = {
   id: string;
-  body: { type: "Blob"; data: Uint8Array };
+  data: Uint8Array;
 };
 
-export type GitObject = Commit | Tree | Tag | Blob;
+export type GitObject =
+  | ({ type: "Commit" } & Commit)
+  | ({ type: "Tree" } & Tree)
+  | ({ type: "Tag" } & Tag)
+  | ({ type: "Blob" } & Blob);
 
 export type TreeEntry = {
   id: string;
@@ -51,6 +46,6 @@ export type TreeEntry = {
 export type RefName = { type: "Head" } | { type: "Ref"; value: string };
 
 export function commit(object: GitObject): Commit | null {
-  if (object.body.type === "Commit") return { id: object.id, body: object.body };
+  if (object.type === "Commit") return object;
   else return null;
 }

@@ -1,7 +1,5 @@
 import { WebRefName, type WebRepo } from "../pkg/rgit_web";
 import { assertNever } from "./assert-never";
-import { fakeViewModel } from "./fake-view";
-import type { UpdateState } from "./props";
 import {
   setPath,
   type AppState,
@@ -91,26 +89,25 @@ async function deriveFileBrowserView(
   state: FileBrowserState,
 ): Promise<FileBrowserView | Mutator<AppState>> {
   const refs: RefName[] = (await repo.ref_names()).map((n) => n.to_js());
-  let objectId: string;
+  let commit: Commit | undefined;
   switch (state.commit.type) {
     case "ref": {
       const webRef = await repo.lookup_ref(new WebRefName(state.commit.ref));
-      objectId = await webRef.resolve_object_id();
+      commit = (await webRef.peel_to_commit())?.to_js();
       break;
     }
     case "detached": {
-      objectId = state.commit.id;
+      commit = (await repo.lookup_object(state.commit.id)).to_js();
     }
   }
-  const commit: Commit | null = await peelToCommit(repo, objectId);
-  const tree: GitObject = (await repo.lookup_object(commit.body.tree)).to_js();
+  const tree: GitObject = (await repo.lookup_object(commit!.tree)).to_js();
 
   let viewingObject: GitObject = tree;
   let pathComponent: string | undefined;
   for (let pathComponentIdx = 0; pathComponentIdx < state.path.length; pathComponentIdx++) {
     pathComponent = state.path[pathComponentIdx];
-    if (viewingObject.body.type === "Tree") {
-      const entry = viewingObject.body.entries.find((entry) => entry.name === pathComponent);
+    if (viewingObject.type === "Tree") {
+      const entry = viewingObject.entries.find((entry) => entry.name === pathComponent);
       if (entry === undefined) {
         return setPath(state.path.slice(0, pathComponentIdx));
       }
@@ -119,21 +116,21 @@ async function deriveFileBrowserView(
       break;
     }
   }
-  switch (viewingObject.body.type) {
+  switch (viewingObject.type) {
     case "Tree": {
       return {
         type: "file browser",
         refs,
-        commit,
-        inner: { type: "tree", entries: viewingObject.body.entries },
+        commit: commit!,
+        inner: { type: "tree", entries: viewingObject.entries },
       };
     }
     case "Blob": {
       return {
         type: "file browser",
         refs,
-        commit,
-        inner: { type: "blob", content: viewingObject.body.data },
+        commit: commit!,
+        inner: { type: "blob", content: viewingObject.data },
       };
     }
     default: {
@@ -143,26 +140,9 @@ async function deriveFileBrowserView(
 }
 
 async function deriveCommitView(repo: WebRepo, state: CommitViewState): Promise<CommitView> {
-  const commit: Commit | null = await peelToCommit(repo, state.commitId);
+  const commit: Commit | undefined = (await repo.lookup_object(state.commitId)).to_js();
   return {
     type: "commit view",
-    commit,
+    commit: commit!,
   };
-}
-
-async function peelToCommit(repo: WebRepo, objectId: string): Promise<Commit> {
-  const object: GitObject = (await repo.lookup_object(objectId)).to_js();
-  switch (object.body.type) {
-    case "Tree":
-      throw new Error("Cannot peel a tree to a commit");
-    case "Tag": {
-      return peelToCommit(repo, object.body.target);
-    }
-    case "Commit": {
-      return commit(object)!;
-    }
-    case "Blob": {
-      throw new Error("Cannot peel a blob to a tree");
-    }
-  }
 }

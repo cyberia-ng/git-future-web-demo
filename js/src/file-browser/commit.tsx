@@ -5,7 +5,7 @@ import { viewCommit } from "../state";
 
 export function Commit({ view, updateState }: StandardProps<unknown, FileBrowserView>) {
   const commit = view.model.commit;
-  const commitDate = Temporal.Instant.from(commit.body.author_date);
+  const commitDate = Temporal.Instant.from(commit.author_date);
   return (
     <a
       href="#"
@@ -13,8 +13,8 @@ export function Commit({ view, updateState }: StandardProps<unknown, FileBrowser
       onClick={() => updateState(viewCommit(commit.id))}
     >
       <GitCommit className="me-3 flex-shrink-0" />
-      <div className="flex-grow-1 text-truncate">{view.model.commit.body.message}</div>
-      <div className="flex-shrink-0 text-nowrap ms-3">{view.model.commit.body.author_name}</div>
+      <div className="flex-grow-1 text-truncate">{view.model.commit.message}</div>
+      <div className="flex-shrink-0 text-nowrap ms-3">{view.model.commit.author_name}</div>
       <div className="flex-shrink-0 text-nowrap ms-3">
         {timeAgo(commitDate, Temporal.Now.instant())}
       </div>
