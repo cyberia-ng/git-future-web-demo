@@ -1,5 +1,5 @@
 use js_sys::{Array, JsString, Promise, Reflect, TypeError, Uint8Array};
-use rgit_core::directory::{DirEntry, Directory, DirectoryError, File};
+use rgit_core::{DirEntry, Directory, DirectoryError, File, Offset};
 use wasm_bindgen::prelude::*;
 use web_sys::{DomException, FileSystemDirectoryHandle};
 
@@ -122,14 +122,14 @@ impl File for WebFile {
 
     async fn read_segment(
         &mut self,
-        offset: u64,
+        offset: Offset,
         dest: &mut [u8],
     ) -> Result<usize, DirectoryError> {
         let mut f = async || -> Result<usize, JsValue> {
-            if offset > 2u64.pow(53) {
+            if offset.0 > 2u64.pow(53) {
                 panic!("offset not representable as f64");
             }
-            let offset = offset as f64;
+            let offset = offset.0 as f64;
             if dest.len() as u64 > 2u64.pow(53) {
                 panic!("length not representable as f64");
             }
