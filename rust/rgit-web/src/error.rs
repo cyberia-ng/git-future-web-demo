@@ -1,5 +1,5 @@
 use js_sys::JsString;
-use rgit_core::{directory::DirectoryError, error::Error};
+use rgit_core::{error::Error, file_system::FilesystemError};
 use serde_wasm_bindgen::to_value;
 use wasm_bindgen::JsValue;
 use wasm_bindgen::prelude::*;
@@ -13,11 +13,11 @@ extern "C" {
 pub fn to_js_error(err: Error) -> JsValue {
     use Error::*;
     match err {
-        Directory(DirectoryError::NotFound(e)) => {
+        FileSystem(FilesystemError::NotFound(e)) => {
             let js_error = e.downcast::<JsValue>().unwrap();
             *js_error
         }
-        Directory(DirectoryError::Other(e)) => {
+        FileSystem(FilesystemError::Other(e)) => {
             let js_error = e.downcast::<JsValue>().unwrap();
             *js_error
         }
