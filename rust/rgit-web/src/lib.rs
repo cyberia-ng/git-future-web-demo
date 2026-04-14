@@ -1,5 +1,6 @@
 use wasm_bindgen::prelude::*;
 
+mod diff;
 mod directory;
 mod error;
 mod object;
