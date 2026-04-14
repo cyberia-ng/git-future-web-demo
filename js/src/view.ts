@@ -7,7 +7,7 @@ import {
   type FileBrowserState,
   type Mutator,
 } from "./state";
-import { commit, type Commit, type GitObject, type RefName, type TreeEntry } from "./types";
+import { type Commit, type GitObject, type RefName, type TreeEntry } from "./types";
 
 export type ViewModel<S, M> = { state: S; model: M };
 export type DerivedView = EmptyView | RepoView;
@@ -47,7 +47,7 @@ export type TreeView = {
 
 export type BlobView = {
   type: "blob";
-  content: Uint8Array;
+  content: string | Uint8Array;
 };
 
 export async function resolveView(

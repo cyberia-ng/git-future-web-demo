@@ -4,16 +4,11 @@ import type { BlobView } from "../view";
 import { Highlight, themes } from "prism-react-renderer";
 
 export function BlobComponent({ view, updateState }: StandardProps<FileBrowserState, BlobView>) {
-  const decoder = new TextDecoder("utf-8", { fatal: true });
   let content: { type: "text"; content: string } | { type: "binary"; content: Uint8Array };
-  try {
-    content = { type: "text", content: decoder.decode(view.model.content) };
-  } catch (e) {
-    if (e instanceof TypeError) {
-      content = { type: "binary", content: view.model.content };
-    } else {
-      throw e;
-    }
+  if (typeof view.model.content === "string") {
+    content = { type: "text", content: view.model.content };
+  } else {
+    content = { type: "binary", content: view.model.content };
   }
   switch (content.type) {
     case "text": {

@@ -1,7 +1,7 @@
 import type { ReactNode } from "react";
 import type { StandardProps } from "../props";
 import { appendPath, type FileBrowserState } from "../state";
-import type { TreeEntry } from "../types";
+import { assertString, type TreeEntry } from "../types";
 import { type TreeView } from "../view";
 import { ExternalLink, File, Folder, Link } from "react-feather";
 
@@ -25,15 +25,16 @@ export function Tree({ view, updateState }: StandardProps<FileBrowserState, Tree
         icon = <ExternalLink aria-label="submodule" size={20} style={{ translate: "0 -0.1lh" }} />;
         break;
     }
+    const name = assertString(entry.name);
     return (
       <a
         className="list-group-item list-group-item-action"
         href="#"
-        onClick={() => updateState(appendPath(entry.name))}
+        onClick={() => updateState(appendPath(name))}
       >
         <div className="d-flex align-items-center">
           <div className="me-2">{icon}</div>
-          <div>{entry.name}</div>
+          <div>{name}</div>
         </div>
       </a>
     );
@@ -41,10 +42,10 @@ export function Tree({ view, updateState }: StandardProps<FileBrowserState, Tree
   return (
     <div className="list-group">
       {directories.map((entry) => (
-        <Entry entry={entry} key={entry.name} />
+        <Entry entry={entry} key={assertString(entry.name)} />
       ))}
       {others.map((entry) => (
-        <Entry entry={entry} key={entry.name} />
+        <Entry entry={entry} key={assertString(entry.name)} />
       ))}
     </div>
   );

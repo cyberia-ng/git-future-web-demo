@@ -2,7 +2,7 @@ import type { ReactNode } from "react";
 import type { StandardProps } from "../props";
 import { setFileBrowserRef, type FileBrowserCommit, type FileBrowserState } from "../state";
 import { ExternalLink, GitBranch, GitCommit, Tag, type IconProps } from "react-feather";
-import type { RefName } from "../types";
+import { assertString, type RefName } from "../types";
 import type { FileBrowserView, RepoView } from "../view";
 import { assertNever } from "../assert-never";
 
@@ -66,7 +66,8 @@ function RefIcon({
       return <GitCommit {...props} />;
     }
     case "Ref": {
-      switch (ref.value.split("/")[0]!) {
+      const value = assertString(ref.value);
+      switch (value.split("/")[0]!) {
         case "heads": {
           return <GitBranch {...props} />;
         }
@@ -97,9 +98,10 @@ function commitText(commit: FileBrowserCommit): string {
 function refText(refName: RefName) {
   if (refName.type === "Head") return "HEAD";
   else {
-    const [_, ...rest] = refName.value.split("/");
+    const value = assertString(refName.value);
+    const [_, ...rest] = value.split("/");
     if (rest.length === 0) {
-      return refName.value;
+      return value;
     } else {
       return rest.join("/");
     }
@@ -111,7 +113,8 @@ function refTypeOrder(ref: RefName): number {
     case "Head":
       return 0;
     case "Ref": {
-      const [first] = ref.value.split("/");
+      const value = assertString(ref.value);
+      const [first] = value.split("/");
       switch (first) {
         case "stash":
           return 1;
