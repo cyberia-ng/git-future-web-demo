@@ -45,31 +45,3 @@ export type TreeEntry = {
 };
 
 export type RefName = { type: "Head" } | { type: "Ref"; value: string | Uint8Array };
-
-export type DiffEntry =
-  | {
-    type: "LeftOnly";
-    path: string | Uint8Array;
-    entry_type: TreeEntryType;
-    content: string;
-  }
-  | {
-    type: "Both";
-    path: string | Uint8Array;
-    left_type: TreeEntryType;
-    right_type: TreeEntryType;
-    content: string;
-  }
-  | {
-    type: "RightOnly";
-    path: string | Uint8Array;
-    entry_type: TreeEntryType;
-    content: string;
-  };
-
-export function assertString(val: string | Uint8Array): string {
-  if (typeof val !== "string") {
-    throw new Error("Unexpected binary data");
-  }
-  return val;
-}

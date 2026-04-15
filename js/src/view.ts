@@ -1,5 +1,5 @@
 import { WebDiff, WebRefName, type WebRepo } from "../pkg/rgit_web";
-import { assertNever } from "./assert-never";
+import { assertNever } from "./helpers/assert-never";
 import {
   setPath,
   type AppState,
@@ -7,7 +7,8 @@ import {
   type FileBrowserState,
   type Mutator,
 } from "./state";
-import { type Commit, type DiffEntry, type GitObject, type RefName, type TreeEntry } from "./types";
+import type { DiffEntry } from "./types/diff";
+import { type Commit, type GitObject, type RefName, type TreeEntry } from "./types/git";
 
 export type ViewModel<S, M> = { state: S; model: M };
 export type DerivedView = EmptyView | RepoView;
@@ -151,7 +152,6 @@ async function deriveCommitView(repo: WebRepo, state: CommitViewState): Promise<
     const diffHandle = await WebDiff.diff(parentTree, tree);
     diff = diffHandle.to_js();
   }
-  console.log(diff);
   return {
     type: "commit view",
     commit: commit,

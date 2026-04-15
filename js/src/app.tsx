@@ -24,8 +24,8 @@ import { Errors } from "./errors";
 import { produce } from "immer";
 import { FileBrowser } from "./file-browser/index";
 import { fakeViewModel } from "./fake-view";
-import { assertNever } from "./assert-never";
 import { CommitView } from "./commit-view";
+import { assertNever } from "./helpers/assert-never";
 
 export function App() {
   const development = (import.meta as any).env.NODE_ENV === "development";

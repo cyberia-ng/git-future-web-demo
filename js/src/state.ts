@@ -1,4 +1,4 @@
-import type { RefName } from "./types";
+import type { RefName } from "./types/git";
 
 export type AppState = { type: "initial" } | FileBrowserState | CommitViewState;
 

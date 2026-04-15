@@ -1,10 +1,10 @@
-import type { ReactNode } from "react";
 import type { StandardProps } from "../props";
 import { setFileBrowserRef, type FileBrowserCommit, type FileBrowserState } from "../state";
 import { ExternalLink, GitBranch, GitCommit, Tag, type IconProps } from "react-feather";
-import { assertString, type RefName } from "../types";
-import type { FileBrowserView, RepoView } from "../view";
-import { assertNever } from "../assert-never";
+import type { FileBrowserView } from "../view";
+import type { RefName } from "../types/git";
+import { assertString } from "../helpers/assert-string";
+import { assertNever } from "../helpers/assert-never";
 
 export function RefNav({ view, updateState }: StandardProps<FileBrowserState, FileBrowserView>) {
   const sortedRefs = view.model.refs.toSorted((a, b) => {

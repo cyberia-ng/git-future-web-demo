@@ -1,9 +1,10 @@
 import type { ReactNode } from "react";
 import type { StandardProps } from "../props";
 import { appendPath, type FileBrowserState } from "../state";
-import { assertString, type TreeEntry } from "../types";
 import { type TreeView } from "../view";
 import { ExternalLink, File, Folder, Link } from "react-feather";
+import type { TreeEntry } from "../types/git";
+import { assertString } from "../helpers/assert-string";
 
 export function Tree({ view, updateState }: StandardProps<FileBrowserState, TreeView>) {
   const directories = view.model.entries.filter((entry) => entry.entry_type === "Tree");

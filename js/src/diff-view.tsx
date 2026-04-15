@@ -1,12 +1,14 @@
 import { File } from "react-feather";
-import type { StandardProps } from "./props";
-import type { FileBrowserState } from "./state";
-import { assertString, type DiffEntry } from "./types";
+import type { DiffEntry } from "./types/diff";
+import { assertString } from "./helpers/assert-string";
+import type { ReactNode } from "react";
 
 export function DiffEntry({ entry }: { entry: DiffEntry }) {
-  const lines = entry.content.split("\n");
-  const nLines = lines.length;
-  const maxDigits = Math.ceil(Math.log10(nLines + 1));
+  const hunks = entry.content;
+  const oldEnd = Math.max(...hunks.map((hunk) => hunk.old_end));
+  const newEnd = Math.max(...hunks.map((hunk) => hunk.new_end));
+  const maxOldDigits = Math.ceil(Math.log10(oldEnd + 1));
+  const maxNewDigits = Math.ceil(Math.log10(newEnd + 1));
   return (
     <div className="container-fluid font-monospace whitespace-pre-wrap">
       <div className="row bg-body-secondary p-2 border-bottom">
@@ -17,22 +19,82 @@ export function DiffEntry({ entry }: { entry: DiffEntry }) {
           <div className="ms-2">{entry.path}</div>
         </div>
       </div>
-      {lines.map((line, idx) => (
-        <div key={idx} className="row">
-          <div
-            className="col text-end user-select-none text-secondary bg-body-tertiary"
-            style={{
-              maxWidth: `calc(${maxDigits}ch + var(--bs-gutter-x))`,
-              ...(idx === 0 ? { paddingTop: ".5rem" } : {}),
-            }}
-          >
-            {idx + 1}
+      {hunks.map((hunk, idx) => {
+        const oldLength = hunk.old_end - hunk.old_start; // TODO pull to rust side?
+        const newLength = hunk.new_end - hunk.new_start;
+        let oldLineIdx = hunk.old_start;
+        let newLineIdx = hunk.new_start;
+        const lines: ReactNode[] = [];
+        for (let ii = 0; ii < hunk.changes.length; ii++) {
+          const change = hunk.changes[ii]!;
+          let colorClass: string;
+          switch (change.tag) {
+            case "equal": {
+              oldLineIdx++;
+              newLineIdx++;
+              colorClass = "";
+              break;
+            }
+            case "insert": {
+              newLineIdx++;
+              colorClass = "bg-success-subtle";
+              break;
+            }
+            case "delete": {
+              oldLineIdx++;
+              colorClass = "bg-danger-subtle";
+              break;
+            }
+          }
+          lines.push(
+            <div key={ii} className="row">
+              <LineNumber
+                number={change.tag === "insert" ? null : oldLineIdx}
+                maxDigits={maxOldDigits}
+              />
+              <LineNumber
+                number={change.tag === "delete" ? null : newLineIdx}
+                maxDigits={maxNewDigits}
+              />
+              <div
+                className={`col ${colorClass}`}
+                style={{
+                  maxWidth: "1ch",
+                  minWidth: "1ch",
+                }}
+              >
+                {change.tag === "insert" ? "+" : change.tag === "delete" ? "-" : " "}
+              </div>
+              <div className={`col ${colorClass}`}>{change.value}</div>
+            </div>,
+          );
+        }
+        return (
+          <div key={idx}>
+            <div className="row bg-body-tertiary pt-2 pb-1">
+              <LineNumber number={null} maxDigits={maxOldDigits} />
+              <LineNumber number={null} maxDigits={maxNewDigits} />
+              <div className="col">
+                @@ -{hunk.old_start},{oldLength} +{hunk.new_start},{newLength} @@
+              </div>
+            </div>
+            {lines}
           </div>
-          <div className="col" style={idx === 0 ? { paddingTop: ".5rem" } : {}}>
-            {line}
-          </div>
-        </div>
-      ))}
+        );
+      })}
+    </div>
+  );
+}
+
+export function LineNumber({ number, maxDigits }: { number: number | null; maxDigits: number }) {
+  return (
+    <div
+      className="col text-end user-select-none text-secondary bg-body-tertiary"
+      style={{
+        maxWidth: `calc(${maxDigits}ch + var(--bs-gutter-x))`,
+      }}
+    >
+      {number !== null && number + 1}
     </div>
   );
 }
@@ -41,8 +103,8 @@ export function Diff({ entries }: { entries: Array<DiffEntry> }) {
   return (
     <>
       {entries.map((entry) => (
-        <div className="mt-3 border rounded overflow-hidden">
-          <DiffEntry key={assertString(entry.path)} entry={entry} />
+        <div key={assertString(entry.path)} className="mt-3 border rounded overflow-hidden">
+          <DiffEntry entry={entry} />
         </div>
       ))}
     </>

@@ -2,8 +2,7 @@ import type { DetailedHTMLProps, HTMLAttributes, ReactNode } from "react";
 import type { StandardProps } from "./props";
 import { browseCommit, viewCommit, type CommitViewState } from "./state";
 import type { CommitView } from "./view";
-import { assertString } from "./types";
-import { Diff, DiffEntry } from "./diff-view";
+import { Diff } from "./diff-view";
 
 export function CommitView({ view, updateState }: StandardProps<CommitViewState, CommitView>) {
   const diff = view.model.diff;
