@@ -22,7 +22,7 @@ pub fn to_js_error(err: Error) -> JsValue {
             *js_error
         }
         _ => match to_value(&err) {
-            Ok(val) => make_rgit_error(JsString::from(format!("{:?}", err).as_str()), val),
+            Ok(val) => make_rgit_error(JsString::from(format!("{err:?}").as_str()), val),
             Err(val) => val.into(),
         },
     }

@@ -126,13 +126,9 @@ impl File for WebFile {
         dest: &mut [u8],
     ) -> Result<usize, FilesystemError> {
         let mut f = async || -> Result<usize, JsValue> {
-            if offset.0 > 2u64.pow(53) {
-                panic!("offset not representable as f64");
-            }
+            assert!(offset.0 <= 2u64.pow(53), "offset not representable as f64");
             let offset = offset.0 as f64;
-            if dest.len() as u64 > 2u64.pow(53) {
-                panic!("length not representable as f64");
-            }
+            assert!(dest.len() as u64 <= 2u64.pow(53), "length not representable as f64");
             let length = dest.len() as f64;
             let data: Uint8Array = self.file.readSegment(offset, length).await?.dyn_into()?;
             let bytes_read = data.length() as usize;
