@@ -27,7 +27,7 @@ export function BlobComponent({ view, updateState }: StandardProps<FileBrowserSt
               {tokens.map((line, idx) => (
                 <div key={idx} className="row">
                   <div
-                    className="col text-end user-select-none text-secondary bg-body-secondary"
+                    className="col text-end user-select-none text-secondary bg-body-tertiary"
                     style={{
                       maxWidth: `calc(${maxDigits}ch + var(--bs-gutter-x))`,
                       ...(idx === 0 ? { paddingTop: ".5rem" } : {}),
