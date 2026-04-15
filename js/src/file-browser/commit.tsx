@@ -2,23 +2,26 @@ import { GitCommit } from "react-feather";
 import type { StandardProps } from "../props";
 import type { FileBrowserView } from "../view";
 import { viewCommit } from "../state";
+import { Link } from "../link";
 
 export function Commit({ view, updateState }: StandardProps<unknown, FileBrowserView>) {
   const commit = view.model.commit;
+  if (commit === undefined) {
+    return <></>;
+  }
   const commitDate = Temporal.Instant.from(commit.author_date);
   return (
-    <a
-      href="#"
+    <Link
       className="p-3 d-flex text-decoration-none link-body-emphasis"
       onClick={() => updateState(viewCommit(commit.id))}
     >
       <GitCommit className="me-3 flex-shrink-0" />
-      <div className="flex-grow-1 text-truncate">{view.model.commit.message}</div>
-      <div className="flex-shrink-0 text-nowrap ms-3">{view.model.commit.author_name}</div>
+      <div className="flex-grow-1 text-truncate">{commit.message}</div>
+      <div className="flex-shrink-0 text-nowrap ms-3">{commit.author_name}</div>
       <div className="flex-shrink-0 text-nowrap ms-3">
         {timeAgo(commitDate, Temporal.Now.instant())}
       </div>
-    </a>
+    </Link>
   );
 }
 

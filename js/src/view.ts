@@ -1,6 +1,7 @@
 import { WebDiff, WebRefName, type WebRepo } from "../pkg/rgit_web";
 import { assertNever } from "./helpers/assert-never";
 import {
+  reset,
   setPath,
   type AppState,
   type CommitViewState,
@@ -57,7 +58,11 @@ export async function resolveView(
   state: AppState,
 ): Promise<DerivedView | Mutator<AppState>> {
   if (repoState === null) {
-    return emptyView;
+    if (state.type !== "initial") {
+      return reset();
+    } else {
+      return emptyView;
+    }
   }
   const { name, repo } = repoState;
   switch (state.type) {

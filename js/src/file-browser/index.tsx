@@ -6,6 +6,7 @@ import { Tree } from "./tree";
 import { RefNav } from "./ref-nav";
 import { Folder } from "react-feather";
 import { Commit } from "./commit";
+import { Link } from "../link";
 
 export function FileBrowser({
   view,
@@ -46,19 +47,18 @@ export function FileBrowserNav({
           <nav aria-label="tree-breadcrumbs">
             <ol className="breadcrumb p-3 mb-0">
               <li className="breadcrumb-item">
-                <a className={linkClassName} href="#" onClick={() => updateState(setPath([]))}>
+                <Link className={linkClassName} onClick={() => updateState(setPath([]))}>
                   {rootIcon}
-                </a>
+                </Link>
               </li>
               {view.state.path.slice(0, view.state.path.length - 1).map((component, index) => (
                 <li key={component} className="breadcrumb-item">
-                  <a
+                  <Link
                     className={linkClassName}
-                    href="#"
                     onClick={() => updateState(setPath(view.state.path.slice(0, index + 1)))}
                   >
                     {component}
-                  </a>
+                  </Link>
                 </li>
               ))}
               {view.state.path.length > 0 && (

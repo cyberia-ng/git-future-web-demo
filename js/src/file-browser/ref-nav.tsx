@@ -5,6 +5,7 @@ import type { FileBrowserView } from "../view";
 import type { RefName } from "../types/git";
 import { assertString } from "../helpers/assert-string";
 import { assertNever } from "../helpers/assert-never";
+import { Link } from "../link";
 
 export function RefNav({ view, updateState }: StandardProps<FileBrowserState, FileBrowserView>) {
   const sortedRefs = view.model.refs.toSorted((a, b) => {
@@ -31,14 +32,13 @@ export function RefNav({ view, updateState }: StandardProps<FileBrowserState, Fi
       <ul className="dropdown-menu">
         {sortedRefs.map((ref) => (
           <li key={refText(ref)}>
-            <a
+            <Link
               className="dropdown-item d-flex align-items-center"
-              href="#"
               onClick={() => updateState(setFileBrowserRef(ref))}
             >
               <RefIcon ref={ref} size={20} className="me-2" />
               {refText(ref)}
-            </a>
+            </Link>
           </li>
         ))}
       </ul>

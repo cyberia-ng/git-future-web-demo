@@ -95,3 +95,15 @@ export function dismissError(idx: number): Mutator<ErrorState> {
     draft.messages = [...draft.messages.slice(0, idx), ...draft.messages.slice(idx + 1)];
   };
 }
+
+export function toUrl(state: AppState): string {
+  if (state.type === "initial") return "";
+  return btoa(JSON.stringify(state));
+}
+
+export function fromUrl(url: string): AppState {
+  if (url === "") {
+    return initialAppState;
+  }
+  return JSON.parse(atob(url));
+}

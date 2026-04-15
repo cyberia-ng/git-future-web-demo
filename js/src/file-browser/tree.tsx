@@ -1,10 +1,11 @@
 import type { ReactNode } from "react";
-import type { StandardProps } from "../props";
-import { appendPath, type FileBrowserState } from "../state";
-import { type TreeView } from "../view";
-import { ExternalLink, File, Folder, Link } from "react-feather";
-import type { TreeEntry } from "../types/git";
+import { Folder, File, Link as LinkIcon, ExternalLink } from "react-feather";
 import { assertString } from "../helpers/assert-string";
+import type { StandardProps } from "../props";
+import { type FileBrowserState, appendPath } from "../state";
+import type { TreeEntry } from "../types/git";
+import type { TreeView } from "../view";
+import { Link } from "../link";
 
 export function Tree({ view, updateState }: StandardProps<FileBrowserState, TreeView>) {
   const directories = view.model.entries.filter((entry) => entry.entry_type === "Tree");
@@ -20,7 +21,7 @@ export function Tree({ view, updateState }: StandardProps<FileBrowserState, Tree
         icon = <File aria-label="file" size={20} style={{ translate: "0 -0.1lh" }} />;
         break;
       case "Symlink":
-        icon = <Link aria-label="symlink" size={20} style={{ translate: "0 -0.1lh" }} />;
+        icon = <LinkIcon aria-label="symlink" size={20} style={{ translate: "0 -0.1lh" }} />;
         break;
       case "Commit":
         icon = <ExternalLink aria-label="submodule" size={20} style={{ translate: "0 -0.1lh" }} />;
@@ -28,16 +29,15 @@ export function Tree({ view, updateState }: StandardProps<FileBrowserState, Tree
     }
     const name = assertString(entry.name);
     return (
-      <a
+      <Link
         className="list-group-item list-group-item-action"
-        href="#"
         onClick={() => updateState(appendPath(name))}
       >
         <div className="d-flex align-items-center">
           <div className="me-2">{icon}</div>
           <div>{name}</div>
         </div>
-      </a>
+      </Link>
     );
   }
   return (

@@ -3,6 +3,7 @@ import type { StandardProps } from "./props";
 import { browseCommit, viewCommit, type CommitViewState } from "./state";
 import type { CommitView } from "./view";
 import { Diff } from "./diff-view";
+import { Link } from "./link";
 
 export function CommitView({ view, updateState }: StandardProps<CommitViewState, CommitView>) {
   const diff = view.model.diff;
@@ -27,13 +28,12 @@ export function CommitView({ view, updateState }: StandardProps<CommitViewState,
         </li>
         {commit.parents.map((parentId) => (
           <CommitHeader key={parentId} name="Parent" className="font-monospace">
-            <a
-              href="#"
+            <Link
               className="text-decoration-none"
               onClick={() => updateState(viewCommit(parentId))}
             >
               {parentId}
-            </a>
+            </Link>
           </CommitHeader>
         ))}
         <CommitHeader name="Author">

@@ -3,10 +3,12 @@ import { WebRepo } from "../pkg/rgit_web";
 import {
   addError,
   emptyErrorState,
+  fromUrl,
   initialAppState,
   initialFileBrowserState,
   reset,
   resetErrors,
+  toUrl,
   type AppState,
   type ErrorState,
   type Mutator,
@@ -26,19 +28,20 @@ import { FileBrowser } from "./file-browser/index";
 import { fakeViewModel } from "./fake-view";
 import { CommitView } from "./commit-view";
 import { assertNever } from "./helpers/assert-never";
+import { useHashLocation } from "./use-hash-location";
 
 export function App() {
   const development = (import.meta as any).env.NODE_ENV === "development";
   const [fake, setFake] = useState(development);
   const [repo, setRepo] = useState<{ repo: WebRepo; name: string } | null>(null);
-  const [appState, setAppState] = useState<AppState>(initialAppState);
+  const [hash, navigate] = useHashLocation();
   const [errorState, setErrorState] = useState<ErrorState>(emptyErrorState);
   const [viewState, setViewState] = useState<ViewModel<AppState, DerivedView>>(
-    viewModel(appState, emptyView),
+    viewModel(initialAppState, emptyView),
   );
 
   function updateState(mutator: Mutator<AppState>) {
-    setAppState(produce(appState, mutator));
+    navigate(toUrl(produce(fromUrl(hash), mutator)));
   }
   function updateErrorState(mutator: Mutator<ErrorState>) {
     setErrorState(produce(errorState, mutator));
@@ -54,20 +57,20 @@ export function App() {
 
   useEffect(() => {
     if (fake) {
-      setAppState(fakeViewModel.state);
       setViewState(fakeViewModel);
     } else {
-      resolveView(repo, appState)
+      const state = fromUrl(hash);
+      resolveView(repo, state)
         .then((modelOrMutator) => {
           if (typeof modelOrMutator === "function") {
             updateState(modelOrMutator);
           } else {
-            setViewState({ state: appState, model: modelOrMutator });
+            setViewState({ state, model: modelOrMutator });
           }
         })
         .catch(handleError);
     }
-  }, [fake, repo, appState]);
+  }, [fake, repo, hash]);
 
   async function openRepo() {
     if (!window.showDirectoryPicker) {
@@ -102,7 +105,7 @@ export function App() {
           </div>
         )}
         <div>
-          {viewState.state.type === "initial" ? (
+          {repo === null ? (
             <button onClick={() => openRepo().catch(handleError)} className="btn btn-primary">
               Open repo
             </button>
