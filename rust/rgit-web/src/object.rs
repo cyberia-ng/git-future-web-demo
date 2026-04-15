@@ -5,7 +5,7 @@ use wasm_bindgen::prelude::*;
 use crate::directory::WebDirectory;
 
 #[wasm_bindgen]
-pub struct WebObject(pub(crate) Object<'static, WebDirectory>);
+pub struct WebObject(pub(crate) Object<WebDirectory>);
 
 #[wasm_bindgen]
 impl WebObject {
@@ -15,7 +15,7 @@ impl WebObject {
 }
 
 #[wasm_bindgen]
-pub struct WebCommit(pub(crate) Commit<'static, WebDirectory>);
+pub struct WebCommit(pub(crate) Commit<WebDirectory>);
 
 #[wasm_bindgen]
 impl WebCommit {

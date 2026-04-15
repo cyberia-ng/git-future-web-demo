@@ -4,7 +4,7 @@ use serde_wasm_bindgen::{from_value, to_value};
 use wasm_bindgen::prelude::*;
 
 #[wasm_bindgen]
-pub struct WebRef(pub(crate) Ref<'static, WebDirectory>);
+pub struct WebRef(pub(crate) Ref<WebDirectory>);
 
 #[wasm_bindgen]
 impl WebRef {
