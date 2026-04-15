@@ -1,4 +1,8 @@
-use crate::{directory::WebDirectory, error::to_js_error, object::WebCommit};
+use crate::{
+    directory::WebDirectory,
+    error::to_js_error,
+    object::{WebCommit, WebTree},
+};
 use rgit_core::reference::{Ref, RefName};
 use serde_wasm_bindgen::{from_value, to_value};
 use wasm_bindgen::prelude::*;
@@ -20,6 +24,11 @@ impl WebRef {
     pub async fn peel_to_commit(&self) -> Result<Option<WebCommit>, JsValue> {
         let object = self.0.peel_to_commit().await.map_err(to_js_error)?;
         Ok(object.map(WebCommit))
+    }
+
+    pub async fn peel_to_tree(&self) -> Result<Option<WebTree>, JsValue> {
+        let object = self.0.peel_to_tree().await.map_err(to_js_error)?;
+        Ok(object.map(WebTree))
     }
 }
 

@@ -43,3 +43,10 @@ impl WebCommit {
 
 #[wasm_bindgen]
 pub struct WebTree(pub(crate) Tree<WebDirectory>);
+
+#[wasm_bindgen]
+impl WebTree {
+    pub fn to_js(&self) -> Result<JsValue, JsValue> {
+        Ok(to_value(&self.0)?)
+    }
+}

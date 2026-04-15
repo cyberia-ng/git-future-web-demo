@@ -9,7 +9,7 @@ import {
   type Mutator,
 } from "./state";
 import type { DiffEntry } from "./types/diff";
-import { type Commit, type GitObject, type RefName, type TreeEntry } from "./types/git";
+import { type Commit, type GitObject, type RefName, type Tree, type TreeEntry } from "./types/git";
 
 export type ViewModel<S, M> = { state: S; model: M };
 export type DerivedView = EmptyView | RepoView;
@@ -39,7 +39,7 @@ export type CommitView = {
 export type FileBrowserView = {
   type: "file browser";
   refs: RefName[];
-  commit: Commit;
+  commit: Commit | undefined;
   inner: TreeView | BlobView;
 };
 
@@ -97,24 +97,31 @@ async function deriveFileBrowserView(
 ): Promise<FileBrowserView | Mutator<AppState>> {
   const refs: RefName[] = (await repo.ref_names()).map((n) => n.to_js());
   let commit: Commit | undefined;
+  let tree: Tree | undefined;
   switch (state.commit.type) {
     case "ref": {
       const webRef = await repo.lookup_ref(new WebRefName(state.commit.ref));
       commit = (await webRef.peel_to_commit())?.to_js();
+      tree = (await webRef.peel_to_tree())?.to_js();
       break;
     }
     case "detached": {
       commit = (await repo.lookup_object(state.commit.id)).to_js();
+      tree = (await repo.lookup_object(commit!.tree)).to_js();
     }
   }
-  const tree: GitObject = (await repo.lookup_object(commit!.tree)).to_js();
+  if (tree === undefined) {
+    throw new Error("Tree not found");
+  }
 
-  let viewingObject: GitObject = tree;
+  let viewingObject: GitObject = { type: "Tree", ...tree };
   let pathComponent: string | undefined;
   for (let pathComponentIdx = 0; pathComponentIdx < state.path.length; pathComponentIdx++) {
     pathComponent = state.path[pathComponentIdx];
     if (viewingObject.type === "Tree") {
-      const entry = viewingObject.entries.find((entry) => entry.name === pathComponent);
+      const entry: TreeEntry | undefined = viewingObject.entries.find(
+        (entry) => entry.name === pathComponent,
+      );
       if (entry === undefined) {
         return setPath(state.path.slice(0, pathComponentIdx));
       }
@@ -128,7 +135,7 @@ async function deriveFileBrowserView(
       return {
         type: "file browser",
         refs,
-        commit: commit!,
+        commit,
         inner: { type: "tree", entries: viewingObject.entries },
       };
     }
@@ -136,7 +143,7 @@ async function deriveFileBrowserView(
       return {
         type: "file browser",
         refs,
-        commit: commit!,
+        commit,
         inner: { type: "blob", content: viewingObject.data },
       };
     }
