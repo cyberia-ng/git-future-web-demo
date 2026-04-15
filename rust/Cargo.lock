@@ -45,6 +45,7 @@ source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "63044e1ae8e69f3b5a92c736ca6269b8d12fa7efe39bf34ddb06d102cf0e2cab"
 dependencies = [
  "memchr",
+ "serde",
 ]
 
 [[package]]
@@ -480,6 +481,7 @@ dependencies = [
  "rgit-core",
  "serde",
  "serde-wasm-bindgen",
+ "similar",
  "wasm-bindgen",
  "wasm-bindgen-futures",
  "web-sys",
