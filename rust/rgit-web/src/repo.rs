@@ -1,5 +1,5 @@
 use js_sys::{JsString, TypeError};
-use rgit_core::{ObjectId, Repo};
+use rgit_core::{Repo, object::ObjectId};
 use serde_wasm_bindgen::from_value;
 use wasm_bindgen::prelude::*;
 use web_sys::{DomException, FileSystemDirectoryHandle};

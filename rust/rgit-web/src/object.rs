@@ -1,4 +1,4 @@
-use rgit_core::Object;
+use rgit_core::object::Object;
 use serde_wasm_bindgen::to_value;
 use wasm_bindgen::prelude::*;
 

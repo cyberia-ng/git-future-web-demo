@@ -1,5 +1,5 @@
 use crate::{directory::WebDirectory, error::to_js_error};
-use rgit_core::{Ref, RefName};
+use rgit_core::reference::{Ref, RefName};
 use serde_wasm_bindgen::{from_value, to_value};
 use wasm_bindgen::prelude::*;
 

@@ -1,5 +1,5 @@
 use js_sys::{Array, JsString, Promise, Reflect, TypeError, Uint8Array};
-use rgit_core::{DirEntry, Directory, DirectoryError, File, Offset};
+use rgit_core::directory::{DirEntry, Directory, DirectoryError, File, Offset};
 use wasm_bindgen::prelude::*;
 use web_sys::{DomException, FileSystemDirectoryHandle};
 
