@@ -57,7 +57,6 @@ export function App() {
 
   useEffect(() => {
     if (fake) {
-      // setAppState(fakeViewModel.state);
       setViewState(fakeViewModel);
     } else {
       const state = fromUrl(hash);
