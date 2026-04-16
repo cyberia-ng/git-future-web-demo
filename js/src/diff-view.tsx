@@ -66,7 +66,7 @@ export function DiffEntry({ entry }: { entry: DiffEntry }) {
               <LineNumber number={null} maxDigits={maxOldDigits} />
               <LineNumber number={null} maxDigits={maxNewDigits} />
               <div className="col">
-                @@ -{hunk.old_start},{oldLength} +{hunk.new_start},{newLength} @@
+                @@ -{hunk.old_start + 1},{oldLength} +{hunk.new_start + 1},{newLength} @@
               </div>
             </div>
             {lines}
