@@ -14,12 +14,19 @@ p.add_argument(
     action="store_true",
     help="Build in release mode (default: debug build)",
 )
+p.add_argument(
+    "--perf",
+    action="store_true",
+    help="Build in perf mode (like release but with debug symbols)",
+)
 
 args = p.parse_args()
 
 cargo_cmd = ["cargo", "build", "--target", "wasm32-unknown-unknown"]
 if args.release:
     cargo_cmd.append("--release")
+if args.perf:
+    cargo_cmd.append("--profile=perf")
 run(
     cargo_cmd,
     cwd=rust_dir,
@@ -33,7 +40,7 @@ run(
             rust_dir,
             "target",
             "wasm32-unknown-unknown",
-            "release" if args.release else "debug",
+            "release" if args.release else "perf" if args.perf else "debug",
             "rgit_web.wasm",
         ),
         "--out-dir",
@@ -45,12 +52,17 @@ run(
     check=True,
 )
 
-if args.release:
+if args.release or args.perf:
+    if args.perf:
+        opts = ["-g"]
+    else:
+        opts = []
     run(
         [
             "wasm-opt",
             join(js_dir, "pkg", "rgit_web_bg.wasm"),
             "-O3",
+            *opts,
             "-o",
             join(js_dir, "pkg", "rgit_web_bg.wasm"),
         ],
