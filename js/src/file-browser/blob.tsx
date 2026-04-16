@@ -22,7 +22,7 @@ export function BlobComponent({ view, updateState }: StandardProps<FileBrowserSt
           {({ style, tokens, getLineProps, getTokenProps }) => (
             <div
               style={style}
-              className="container rounded overflow-hidden font-monospace whitespace-pre-wrap"
+              className="container-fluid rounded overflow-hidden font-monospace whitespace-pre-wrap"
             >
               {tokens.map((line, idx) => (
                 <div key={idx} className="row">
@@ -63,6 +63,7 @@ const EXTENSIONS: Record<string, string> = {
   kts: "kotlin",
   ktm: "kotlin",
   m: "objectivec",
+  ts: "js",
   js: "js",
   cjs: "js",
   mjs: "js",
