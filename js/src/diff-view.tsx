@@ -27,25 +27,7 @@ export function DiffEntry({ entry }: { entry: DiffEntry }) {
         const lines: ReactNode[] = [];
         for (let ii = 0; ii < hunk.changes.length; ii++) {
           const change = hunk.changes[ii]!;
-          let colorClass: string;
-          switch (change.tag) {
-            case "equal": {
-              oldLineIdx++;
-              newLineIdx++;
-              colorClass = "";
-              break;
-            }
-            case "insert": {
-              newLineIdx++;
-              colorClass = "bg-success";
-              break;
-            }
-            case "delete": {
-              oldLineIdx++;
-              colorClass = "bg-danger";
-              break;
-            }
-          }
+          const colorClass = { equal: "", insert: "bg-success", delete: "bg-danger" }[change.tag];
           lines.push(
             <div key={ii} className="row">
               <LineNumber
@@ -62,6 +44,21 @@ export function DiffEntry({ entry }: { entry: DiffEntry }) {
               <div className={`col diff-line ${colorClass}`}>{change.value}</div>
             </div>,
           );
+          switch (change.tag) {
+            case "equal": {
+              oldLineIdx++;
+              newLineIdx++;
+              break;
+            }
+            case "insert": {
+              newLineIdx++;
+              break;
+            }
+            case "delete": {
+              oldLineIdx++;
+              break;
+            }
+          }
         }
         return (
           <div key={idx}>
