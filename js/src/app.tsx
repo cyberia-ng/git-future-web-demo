@@ -105,7 +105,7 @@ export function App() {
           </div>
         )}
         <div>
-          {repo === null ? (
+          {repo === null && !fake ? (
             <button onClick={() => openRepo().catch(handleError)} className="btn btn-primary">
               Open repo
             </button>
