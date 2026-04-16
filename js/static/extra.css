@@ -1,3 +1,42 @@
 .whitespace-pre-wrap {
   white-space: pre-wrap;
 }
+
+.diff-line.bg-success {
+  --bs-bg-opacity: 0.3;
+}
+
+.diff-line.bg-danger {
+  --bs-bg-opacity: 0.3;
+}
+
+.mw-gutter-0 {
+  max-width: 0 !important;
+}
+.mw-gutter-1 {
+  max-width: calc(1ch + var(--bs-gutter-x)) !important;
+}
+.mw-gutter-2 {
+  max-width: calc(2ch + var(--bs-gutter-x)) !important;
+}
+.mw-gutter-3 {
+  max-width: calc(3ch + var(--bs-gutter-x)) !important;
+}
+.mw-gutter-4 {
+  max-width: calc(4ch + var(--bs-gutter-x)) !important;
+}
+.mw-gutter-5 {
+  max-width: calc(5ch + var(--bs-gutter-x)) !important;
+}
+.mw-gutter-6 {
+  max-width: calc(6ch + var(--bs-gutter-x)) !important;
+}
+.mw-gutter-7 {
+  max-width: calc(7ch + var(--bs-gutter-x)) !important;
+}
+.mw-gutter-8 {
+  max-width: calc(8ch + var(--bs-gutter-x)) !important;
+}
+.mw-gutter-9 {
+  max-width: calc(9ch + var(--bs-gutter-x)) !important;
+}

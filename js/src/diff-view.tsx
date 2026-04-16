@@ -1,7 +1,7 @@
 import { File } from "react-feather";
 import type { DiffEntry } from "./types/diff";
 import { assertString } from "./helpers/assert-string";
-import type { ReactNode } from "react";
+import type { CSSProperties, ReactNode } from "react";
 
 export function DiffEntry({ entry }: { entry: DiffEntry }) {
   const hunks = entry.content;
@@ -37,12 +37,12 @@ export function DiffEntry({ entry }: { entry: DiffEntry }) {
             }
             case "insert": {
               newLineIdx++;
-              colorClass = "bg-success-subtle";
+              colorClass = "bg-success";
               break;
             }
             case "delete": {
               oldLineIdx++;
-              colorClass = "bg-danger-subtle";
+              colorClass = "bg-danger";
               break;
             }
           }
@@ -56,22 +56,16 @@ export function DiffEntry({ entry }: { entry: DiffEntry }) {
                 number={change.tag === "delete" ? null : newLineIdx}
                 maxDigits={maxNewDigits}
               />
-              <div
-                className={`col ${colorClass}`}
-                style={{
-                  maxWidth: "1ch",
-                  minWidth: "1ch",
-                }}
-              >
+              <div className={`col diff-line mw-gutter-1 ${colorClass}`}>
                 {change.tag === "insert" ? "+" : change.tag === "delete" ? "-" : " "}
               </div>
-              <div className={`col ${colorClass}`}>{change.value}</div>
+              <div className={`col diff-line ${colorClass}`}>{change.value}</div>
             </div>,
           );
         }
         return (
           <div key={idx}>
-            <div className="row bg-body-tertiary pt-2 pb-1">
+            <div className="row bg-body-tertiary pt-1 pb-1">
               <LineNumber number={null} maxDigits={maxOldDigits} />
               <LineNumber number={null} maxDigits={maxNewDigits} />
               <div className="col">
@@ -87,16 +81,14 @@ export function DiffEntry({ entry }: { entry: DiffEntry }) {
 }
 
 export function LineNumber({ number, maxDigits }: { number: number | null; maxDigits: number }) {
-  return (
-    <div
-      className="col text-end user-select-none text-secondary bg-body-tertiary"
-      style={{
-        maxWidth: `calc(${maxDigits}ch + var(--bs-gutter-x))`,
-      }}
-    >
-      {number !== null && number + 1}
-    </div>
-  );
+  let className = "col text-end user-select-none text-secondary bg-body-tertiary";
+  let style: CSSProperties = {};
+  if (maxDigits < 10) {
+    className += ` mw-gutter-${maxDigits}`;
+  } else {
+    style = { maxWidth: `calc(${maxDigits}ch + var(--bs-gutter-x))` };
+  }
+  return <div {...{ className, style }}>{number !== null && number + 1}</div>;
 }
 
 export function Diff({ entries }: { entries: Array<DiffEntry> }) {
