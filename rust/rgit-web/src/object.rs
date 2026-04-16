@@ -2,10 +2,10 @@ use rgit_core::object::{Commit, Object, Tree};
 use serde_wasm_bindgen::to_value;
 use wasm_bindgen::prelude::*;
 
-use crate::{directory::WebDirectory, error::to_js_error};
+use crate::{error::to_js_error, impls::WebGenerics};
 
 #[wasm_bindgen]
-pub struct WebObject(pub(crate) Object<WebDirectory>);
+pub struct WebObject(pub(crate) Object<WebGenerics>);
 
 #[wasm_bindgen]
 impl WebObject {
@@ -23,7 +23,7 @@ impl WebObject {
 }
 
 #[wasm_bindgen]
-pub struct WebCommit(pub(crate) Commit<WebDirectory>);
+pub struct WebCommit(pub(crate) Commit<WebGenerics>);
 
 #[wasm_bindgen]
 impl WebCommit {
@@ -42,7 +42,7 @@ impl WebCommit {
 }
 
 #[wasm_bindgen]
-pub struct WebTree(pub(crate) Tree<WebDirectory>);
+pub struct WebTree(pub(crate) Tree<WebGenerics>);
 
 #[wasm_bindgen]
 impl WebTree {

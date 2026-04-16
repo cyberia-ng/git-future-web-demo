@@ -7,12 +7,13 @@ use web_sys::{DomException, FileSystemDirectoryHandle};
 use crate::{
     directory::WebDirectory,
     error::to_js_error,
+    impls::WebGenerics,
     object::WebObject,
     reference::{WebRef, WebRefName},
 };
 
 #[wasm_bindgen]
-pub struct WebRepo(pub(crate) Repo<WebDirectory>);
+pub struct WebRepo(pub(crate) Repo<WebGenerics>);
 
 #[wasm_bindgen]
 impl WebRepo {

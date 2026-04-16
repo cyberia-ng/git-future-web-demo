@@ -1,6 +1,6 @@
 use crate::{
-    directory::WebDirectory,
     error::to_js_error,
+    impls::WebGenerics,
     object::{WebCommit, WebTree},
 };
 use rgit_core::reference::{Ref, RefName};
@@ -8,7 +8,7 @@ use serde_wasm_bindgen::{from_value, to_value};
 use wasm_bindgen::prelude::*;
 
 #[wasm_bindgen]
-pub struct WebRef(pub(crate) Ref<WebDirectory>);
+pub struct WebRef(pub(crate) Ref<WebGenerics>);
 
 #[wasm_bindgen]
 impl WebRef {

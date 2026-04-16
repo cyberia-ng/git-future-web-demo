@@ -58,9 +58,7 @@ fn to_directory_error(value: JsValue) -> FilesystemError {
     }
 }
 
-impl Directory for WebDirectory {
-    type File = WebFile;
-
+impl Directory<WebFile> for WebDirectory {
     async fn open_subdir(&self, name: &[u8]) -> Result<Self, FilesystemError> {
         let f = async || -> Result<Self, JsValue> {
             let subdir: JsWebDirectory = self
@@ -96,8 +94,8 @@ impl Directory for WebDirectory {
         f().await.map_err(to_directory_error)
     }
 
-    async fn open_file(&self, name: &[u8]) -> Result<Self::File, FilesystemError> {
-        let f = async || -> Result<Self::File, JsValue> {
+    async fn open_file(&self, name: &[u8]) -> Result<WebFile, FilesystemError> {
+        let f = async || -> Result<WebFile, JsValue> {
             let js_file: JsWebFile = self
                 .directory
                 .openFile(str::from_utf8(name).map_err(|_| TypeError::new("name was not UTF-8"))?)
@@ -128,7 +126,10 @@ impl File for WebFile {
         let mut f = async || -> Result<usize, JsValue> {
             assert!(offset.0 <= 2u64.pow(53), "offset not representable as f64");
             let offset = offset.0 as f64;
-            assert!(dest.len() as u64 <= 2u64.pow(53), "length not representable as f64");
+            assert!(
+                dest.len() as u64 <= 2u64.pow(53),
+                "length not representable as f64"
+            );
             let length = dest.len() as f64;
             let data: Uint8Array = self.file.readSegment(offset, length).await?.dyn_into()?;
             let bytes_read = data.length() as usize;
