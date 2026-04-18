@@ -24,6 +24,7 @@ export const navigate = (to: string) => {
   url.hash = to.replace(/^#?/, "");
   const newURL = url.href;
 
+  if (newURL === oldURL) return;
   history.pushState(null, "", newURL);
 
   dispatchEvent(new HashChangeEvent("hashchange", { oldURL, newURL }));
