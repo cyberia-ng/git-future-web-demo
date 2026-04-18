@@ -42,7 +42,9 @@ impl WebRepo {
                 }
             }
         };
-        let repo = Repo::new(WebDirectory::new(&handle).await?);
+        let repo = Repo::new(WebDirectory::new(&handle).await?)
+            .await
+            .map_err(to_js_error)?;
         Ok(Self(repo))
     }
 

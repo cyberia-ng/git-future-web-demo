@@ -1,5 +1,6 @@
 use crate::directory::{WebDirectory, WebFile};
-use rgit_core::{sync::SingleThreadedRcCell, traits::AllGenerics};
+use rgit_core::traits::AllGenerics;
+use std::rc::Rc;
 
 pub struct WebGenerics;
 impl AllGenerics for WebGenerics {
@@ -7,5 +8,5 @@ impl AllGenerics for WebGenerics {
 
     type Directory = WebDirectory;
 
-    type SharedCell<T: 'static> = SingleThreadedRcCell<T>;
+    type SharedRef<T: 'static> = Rc<T>;
 }
