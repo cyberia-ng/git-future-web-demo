@@ -1,14 +1,14 @@
 use crate::{
     error::to_js_error,
-    impls::WebGenerics,
     object::{WebCommit, WebTree},
+    repo::WebRepo,
 };
 use rgit_core::reference::{Ref, RefName};
 use serde_wasm_bindgen::{from_value, to_value};
 use wasm_bindgen::prelude::*;
 
 #[wasm_bindgen]
-pub struct WebRef(pub(crate) Ref<WebGenerics>);
+pub struct WebRef(pub(crate) Ref);
 
 #[wasm_bindgen]
 impl WebRef {
@@ -16,18 +16,22 @@ impl WebRef {
         Ok(to_value(&self.0)?)
     }
 
-    pub async fn resolve_object_id(&self) -> Result<JsValue, JsValue> {
-        let oid = self.0.resolve_object_id().await.map_err(to_js_error)?;
+    pub async fn resolve_object_id(&self, repo: &WebRepo) -> Result<JsValue, JsValue> {
+        let oid = self
+            .0
+            .resolve_object_id(&repo.0)
+            .await
+            .map_err(to_js_error)?;
         Ok(to_value(&oid)?)
     }
 
-    pub async fn peel_to_commit(&self) -> Result<Option<WebCommit>, JsValue> {
-        let object = self.0.peel_to_commit().await.map_err(to_js_error)?;
+    pub async fn peel_to_commit(&self, repo: &WebRepo) -> Result<Option<WebCommit>, JsValue> {
+        let object = self.0.peel_to_commit(&repo.0).await.map_err(to_js_error)?;
         Ok(object.map(WebCommit))
     }
 
-    pub async fn peel_to_tree(&self) -> Result<Option<WebTree>, JsValue> {
-        let object = self.0.peel_to_tree().await.map_err(to_js_error)?;
+    pub async fn peel_to_tree(&self, repo: &WebRepo) -> Result<Option<WebTree>, JsValue> {
+        let object = self.0.peel_to_tree(&repo.0).await.map_err(to_js_error)?;
         Ok(object.map(WebTree))
     }
 }

@@ -4,15 +4,15 @@ use serde_wasm_bindgen::to_value;
 use similar::ChangeTag;
 use wasm_bindgen::prelude::*;
 
-use crate::{error::to_js_error, object::WebTree};
+use crate::{error::to_js_error, object::WebTree, repo::WebRepo};
 
 #[wasm_bindgen]
 pub struct WebDiff(pub(crate) Vec<DiffEntry<Vec<Hunk>>>);
 
 #[wasm_bindgen]
 impl WebDiff {
-    pub async fn diff(left: &WebTree, right: &WebTree) -> Result<WebDiff, JsValue> {
-        let tree_diff = TreeDiff::new(&left.0, &right.0)
+    pub async fn diff(repo: &WebRepo, left: &WebTree, right: &WebTree) -> Result<WebDiff, JsValue> {
+        let tree_diff = TreeDiff::new(&repo.0, &left.0, &right.0)
             .await
             .map_err(to_js_error)?;
         let diff = tree_diff

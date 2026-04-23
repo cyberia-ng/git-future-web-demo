@@ -2,10 +2,10 @@ use rgit_core::object::{Commit, Object, Tree};
 use serde_wasm_bindgen::to_value;
 use wasm_bindgen::prelude::*;
 
-use crate::{error::to_js_error, impls::WebGenerics};
+use crate::{error::to_js_error, repo::WebRepo};
 
 #[wasm_bindgen]
-pub struct WebObject(pub(crate) Object<WebGenerics>);
+pub struct WebObject(pub(crate) Object);
 
 #[wasm_bindgen]
 impl WebObject {
@@ -23,7 +23,7 @@ impl WebObject {
 }
 
 #[wasm_bindgen]
-pub struct WebCommit(pub(crate) Commit<WebGenerics>);
+pub struct WebCommit(pub(crate) Commit);
 
 #[wasm_bindgen]
 impl WebCommit {
@@ -31,18 +31,20 @@ impl WebCommit {
         Ok(to_value(&self.0)?)
     }
 
-    pub async fn lookup_tree(&self) -> Result<WebTree, JsValue> {
-        Ok(WebTree(self.0.lookup_tree().await.map_err(to_js_error)?))
+    pub async fn lookup_tree(&self, repo: &WebRepo) -> Result<WebTree, JsValue> {
+        Ok(WebTree(
+            self.0.lookup_tree(&repo.0).await.map_err(to_js_error)?,
+        ))
     }
 
-    pub async fn lookup_parents(&self) -> Result<Vec<WebCommit>, JsValue> {
-        let parents = self.0.lookup_parents().await.map_err(to_js_error)?;
+    pub async fn lookup_parents(&self, repo: &WebRepo) -> Result<Vec<WebCommit>, JsValue> {
+        let parents = self.0.lookup_parents(&repo.0).await.map_err(to_js_error)?;
         Ok(parents.into_iter().map(WebCommit).collect())
     }
 }
 
 #[wasm_bindgen]
-pub struct WebTree(pub(crate) Tree<WebGenerics>);
+pub struct WebTree(pub(crate) Tree);
 
 #[wasm_bindgen]
 impl WebTree {
