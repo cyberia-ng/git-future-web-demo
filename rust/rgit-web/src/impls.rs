@@ -1,5 +1,5 @@
-use rgit_core::{sync::SingleThreadedRcCell, traits::AllGenerics};
 use crate::directory::{WebDirectory, WebFile};
+use rgit_core::{sync::SingleThreadedRcCell, traits::AllGenerics};
 
 pub struct WebGenerics;
 impl AllGenerics for WebGenerics {
