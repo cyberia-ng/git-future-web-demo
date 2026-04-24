@@ -4,7 +4,7 @@ use rgit_core::object as rgit_object;
 use wasm_bindgen::prelude::*;
 
 pub fn from_object_id(id: rgit_object::ObjectId) -> JsString {
-    format!("{}", id).into()
+    format!("{id}").into()
 }
 
 #[wasm_bindgen]

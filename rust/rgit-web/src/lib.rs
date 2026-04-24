@@ -1,3 +1,9 @@
+#![warn(clippy::pedantic)]
+#![allow(clippy::missing_errors_doc)]
+#![allow(clippy::enum_glob_use)]
+#![allow(clippy::must_use_candidate)]
+#![allow(clippy::missing_panics_doc)]
+
 use wasm_bindgen::prelude::*;
 
 mod diff;

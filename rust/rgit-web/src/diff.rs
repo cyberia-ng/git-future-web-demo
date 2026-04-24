@@ -1,6 +1,6 @@
 use rgit_core::diff::{DiffEntry, TreeDiff};
 use serde::Serialize;
-use similar::ChangeTag;
+use similar::{ChangeTag, TextDiffConfig};
 use wasm_bindgen::prelude::*;
 
 use crate::{error::to_js_error, object::Tree, repo::Repo};
@@ -15,7 +15,7 @@ impl WebDiff {
             .await
             .map_err(to_js_error)?;
         let diff = tree_diff
-            .to_text_diff(&repo.0, Default::default())
+            .to_text_diff(&repo.0, TextDiffConfig::default())
             .await
             .map_err(to_js_error)?;
         let mut entries = Vec::new();
