@@ -1,6 +1,5 @@
 use rgit_core::diff::{DiffEntry, TreeDiff};
 use serde::Serialize;
-use serde_wasm_bindgen::to_value;
 use similar::ChangeTag;
 use wasm_bindgen::prelude::*;
 
@@ -16,7 +15,7 @@ impl WebDiff {
             .await
             .map_err(to_js_error)?;
         let diff = tree_diff
-            .to_text_diff(Default::default())
+            .to_text_diff(&repo.0, Default::default())
             .await
             .map_err(to_js_error)?;
         let mut entries = Vec::new();
@@ -60,7 +59,7 @@ impl WebDiff {
     }
 
     pub fn to_js(&self) -> Result<JsValue, JsValue> {
-        Ok(to_value(&self.0)?)
+        todo!()
     }
 }
 

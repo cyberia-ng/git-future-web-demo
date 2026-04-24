@@ -1,6 +1,5 @@
 use js_sys::{JsString, TypeError};
 use rgit_core::{Repo, object::ObjectId};
-use serde_wasm_bindgen::from_value;
 use wasm_bindgen::prelude::*;
 use web_sys::{DomException, FileSystemDirectoryHandle};
 
@@ -64,8 +63,9 @@ impl WebRepo {
         Ok(WebRef(reference))
     }
 
-    pub async fn lookup_object(&self, id: JsString) -> Result<WebObject, JsValue> {
-        let id: ObjectId = from_value(id.into())?;
+    pub async fn lookup_object(&self, id: &JsString) -> Result<WebObject, JsValue> {
+        let id: ObjectId = ObjectId::from_hex(String::from(id).as_bytes())
+            .ok_or_else(|| JsError::new("invalid object ID"))?;
         let object = self.0.lookup_object(id).await.map_err(to_js_error)?;
         Ok(WebObject(object))
     }
