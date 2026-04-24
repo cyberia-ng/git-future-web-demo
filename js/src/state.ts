@@ -1,4 +1,4 @@
-import type { RefName } from "./types/git";
+import type { RefNamePlainObject } from "./ref";
 
 export type AppState = { type: "initial" } | FileBrowserState | CommitViewState;
 
@@ -12,11 +12,13 @@ export type FileBrowserState = {
   path: string[];
 };
 
-export type FileBrowserCommit = { type: "ref"; ref: RefName } | { type: "detached"; id: string };
+export type FileBrowserCommit =
+  | { type: "ref"; ref: RefNamePlainObject }
+  | { type: "detached"; id: string };
 
 export const initialFileBrowserState: FileBrowserState = {
   type: "file browser",
-  commit: { type: "ref", ref: { type: "Head" } },
+  commit: { type: "ref", ref: { type: "head" } },
   path: [],
 };
 
@@ -57,7 +59,7 @@ export function browseCommit(id: string): Mutator<AppState> {
   };
 }
 
-export function setFileBrowserRef(ref: RefName): Mutator<AppState> {
+export function setFileBrowserRef(ref: RefNamePlainObject): Mutator<AppState> {
   return (draft) => {
     if (draft.type === "file browser") {
       draft.commit = { type: "ref", ref };

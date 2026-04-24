@@ -2,20 +2,21 @@ import type { StandardProps } from "../props";
 import { setFileBrowserRef, type FileBrowserCommit, type FileBrowserState } from "../state";
 import { ExternalLink, GitBranch, GitCommit, Tag, type IconProps } from "react-feather";
 import type { FileBrowserView } from "../view";
-import type { RefName } from "../types/git";
 import { assertString } from "../helpers/assert-string";
 import { assertNever } from "../helpers/assert-never";
 import { Link } from "../link";
+import type { RefName } from "../../pkg/rgit_web";
+import { refNameToPlainObject, type RefNamePlainObject } from "../ref";
 
 export function RefNav({ view, updateState }: StandardProps<FileBrowserState, FileBrowserView>) {
   const sortedRefs = view.model.refs.toSorted((a, b) => {
     const typeOrderDiff = refTypeOrder(a) - refTypeOrder(b);
     if (typeOrderDiff !== 0) return typeOrderDiff;
-    else if (a.type === "Head" || b.type === "Head") {
+    else if (a.discriminator() === "head" || b.discriminator() === "head") {
       // a and b are same type, but we can't have two heads or two stashes
       throw new Error("unreachable");
     } else {
-      return a.value < b.value ? -1 : 1;
+      return a.name() < b.name() ? -1 : 1;
     }
   });
   return (
@@ -31,13 +32,13 @@ export function RefNav({ view, updateState }: StandardProps<FileBrowserState, Fi
       </button>
       <ul className="dropdown-menu">
         {sortedRefs.map((ref) => (
-          <li key={refText(ref)}>
+          <li key={refText(refNameToPlainObject(ref))}>
             <Link
               className="dropdown-item d-flex align-items-center"
-              onClick={() => updateState(setFileBrowserRef(ref))}
+              onClick={() => updateState(setFileBrowserRef(refNameToPlainObject(ref)))}
             >
-              <RefIcon ref={ref} size={20} className="me-2" />
-              {refText(ref)}
+              <RefIcon ref={refNameToPlainObject(ref)} size={20} className="me-2" />
+              {refText(refNameToPlainObject(ref))}
             </Link>
           </li>
         ))}
@@ -59,14 +60,14 @@ function RefIcon({
   ref,
   ...props
 }: {
-  ref: RefName;
+  ref: RefNamePlainObject;
 } & IconProps) {
   switch (ref.type) {
-    case "Head": {
+    case "head": {
       return <GitCommit {...props} />;
     }
-    case "Ref": {
-      const value = assertString(ref.value);
+    case "ref": {
+      const value = ref.name;
       switch (value.split("/")[0]!) {
         case "heads": {
           return <GitBranch {...props} />;
@@ -95,10 +96,10 @@ function commitText(commit: FileBrowserCommit): string {
   }
 }
 
-function refText(refName: RefName) {
-  if (refName.type === "Head") return "HEAD";
+function refText(refName: RefNamePlainObject) {
+  if (refName.type === "head") return "HEAD";
   else {
-    const value = assertString(refName.value);
+    const value = refName.name;
     const [_, ...rest] = value.split("/");
     if (rest.length === 0) {
       return value;
@@ -109,11 +110,11 @@ function refText(refName: RefName) {
 }
 
 function refTypeOrder(ref: RefName): number {
-  switch (ref.type) {
-    case "Head":
+  switch (ref.discriminator()) {
+    case "head":
       return 0;
-    case "Ref": {
-      const value = assertString(ref.value);
+    case "ref": {
+      const value = assertString(ref.name());
       const [first] = value.split("/");
       switch (first) {
         case "stash":

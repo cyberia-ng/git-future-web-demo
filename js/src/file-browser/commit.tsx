@@ -9,15 +9,15 @@ export function Commit({ view, updateState }: StandardProps<unknown, FileBrowser
   if (commit === undefined) {
     return <></>;
   }
-  const commitDate = Temporal.Instant.from(commit.author_date);
+  const commitDate = Temporal.Instant.from(commit.author_date());
   return (
     <Link
       className="p-3 d-flex text-decoration-none link-body-emphasis"
-      onClick={() => updateState(viewCommit(commit.id))}
+      onClick={() => updateState(viewCommit(commit.id()))}
     >
       <GitCommit className="me-3 flex-shrink-0" />
-      <div className="flex-grow-1 text-truncate">{commit.message}</div>
-      <div className="flex-shrink-0 text-nowrap ms-3">{commit.author_name}</div>
+      <div className="flex-grow-1 text-truncate">{commit.message()}</div>
+      <div className="flex-shrink-0 text-nowrap ms-3">{commit.author_name()}</div>
       <div className="flex-shrink-0 text-nowrap ms-3">
         {timeAgo(commitDate, Temporal.Now.instant())}
       </div>

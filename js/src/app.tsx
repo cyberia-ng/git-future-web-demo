@@ -1,5 +1,4 @@
 import { useEffect, useState } from "react";
-import { WebRepo } from "../pkg/rgit_web";
 import {
   addError,
   emptyErrorState,
@@ -29,11 +28,12 @@ import { fakeViewModel } from "./fake-view";
 import { CommitView } from "./commit-view";
 import { assertNever } from "./helpers/assert-never";
 import { useHashLocation } from "./use-hash-location";
+import { Repo } from "../pkg/rgit_web";
 
 export function App() {
   const development = (import.meta as any).env.NODE_ENV === "development";
   const [fake, setFake] = useState(development);
-  const [repo, setRepo] = useState<{ repo: WebRepo; name: string } | null>(null);
+  const [repo, setRepo] = useState<{ repo: Repo; name: string } | null>(null);
   const [hash, navigate] = useHashLocation();
   const [errorState, setErrorState] = useState<ErrorState>(emptyErrorState);
   const [viewState, setViewState] = useState<ViewModel<AppState, DerivedView>>(
@@ -77,7 +77,7 @@ export function App() {
       throw new Error("This browser does not support window.showDirectoryPicker()");
     }
     const handle = await window.showDirectoryPicker();
-    const repo = await WebRepo.construct(handle);
+    const repo = await Repo.construct(handle);
     setRepo({ repo, name: handle.name });
     updateState(() => initialFileBrowserState);
     updateErrorState(resetErrors());
@@ -119,14 +119,14 @@ export function App() {
       <main>
         <Errors state={errorState} updateErrorState={updateErrorState} />
         {viewState.model.type === "repo" && (
-          <Repo view={viewModel(viewState.state, viewState.model)} updateState={updateState} />
+          <RepoView view={viewModel(viewState.state, viewState.model)} updateState={updateState} />
         )}
       </main>
     </div>
   );
 }
 
-function Repo({ view, updateState }: StandardProps<AppState, RepoView>) {
+function RepoView({ view, updateState }: StandardProps<AppState, RepoView>) {
   switch (view.state.type) {
     case "initial":
       return <></>;

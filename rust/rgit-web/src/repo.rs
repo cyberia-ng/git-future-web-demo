@@ -1,5 +1,5 @@
 use js_sys::{JsString, TypeError};
-use rgit_core::{Repo, object::ObjectId};
+use rgit_core::{Repo as RGitRepo, object::ObjectId};
 use wasm_bindgen::prelude::*;
 use web_sys::{DomException, FileSystemDirectoryHandle};
 
@@ -7,15 +7,15 @@ use crate::{
     directory::WebDirectory,
     error::to_js_error,
     impls::WebGenerics,
-    object::WebObject,
-    reference::{WebRef, WebRefName},
+    object::GitObject,
+    reference::{Ref, RefName},
 };
 
 #[wasm_bindgen]
-pub struct WebRepo(pub(crate) Repo<WebGenerics>);
+pub struct Repo(pub(crate) RGitRepo<WebGenerics>);
 
 #[wasm_bindgen]
-impl WebRepo {
+impl Repo {
     pub async fn construct(handle: FileSystemDirectoryHandle) -> Result<Self, JsValue> {
         let handle: FileSystemDirectoryHandle = match handle.get_file_handle("HEAD").await {
             Ok(_) => handle,
@@ -41,32 +41,32 @@ impl WebRepo {
                 }
             }
         };
-        let repo = Repo::new(WebDirectory::new(&handle).await?)
+        let repo = RGitRepo::new(WebDirectory::new(&handle).await?)
             .await
             .map_err(to_js_error)?;
         Ok(Self(repo))
     }
 
-    pub async fn head(&self) -> Result<WebRef, JsValue> {
+    pub async fn head(&self) -> Result<Ref, JsValue> {
         let head = self.0.head().await.map_err(to_js_error)?;
-        Ok(WebRef(head))
+        Ok(Ref(head))
     }
 
-    pub async fn ref_names(&self) -> Result<Vec<WebRefName>, JsValue> {
+    pub async fn ref_names(&self) -> Result<Vec<RefName>, JsValue> {
         let refs = self.0.ref_names().await.map_err(to_js_error)?;
-        Ok(refs.into_iter().map(WebRefName).collect())
+        Ok(refs.into_iter().map(RefName).collect())
     }
 
-    pub async fn lookup_ref(&self, ref_name: &WebRefName) -> Result<WebRef, JsValue> {
+    pub async fn lookup_ref(&self, ref_name: &RefName) -> Result<Ref, JsValue> {
         let ref_name = &ref_name.0;
         let reference = self.0.lookup_ref(ref_name).await.map_err(to_js_error)?;
-        Ok(WebRef(reference))
+        Ok(Ref(reference))
     }
 
-    pub async fn lookup_object(&self, id: &JsString) -> Result<WebObject, JsValue> {
+    pub async fn lookup_object(&self, id: &JsString) -> Result<GitObject, JsValue> {
         let id: ObjectId = ObjectId::from_hex(String::from(id).as_bytes())
             .ok_or_else(|| JsError::new("invalid object ID"))?;
         let object = self.0.lookup_object(id).await.map_err(to_js_error)?;
-        Ok(WebObject(object))
+        Ok(GitObject(object))
     }
 }

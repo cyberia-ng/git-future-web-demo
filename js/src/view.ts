@@ -1,5 +1,14 @@
-import { WebDiff, WebRefName, type WebRepo } from "../pkg/rgit_web";
+import {
+  WebDiff,
+  type Commit,
+  type GitObject,
+  type RefName,
+  type Repo,
+  type Tree,
+  type TreeEntry,
+} from "../pkg/rgit_web";
 import { assertNever } from "./helpers/assert-never";
+import { refNameFromPlainObject } from "./ref";
 import {
   reset,
   setPath,
@@ -9,7 +18,6 @@ import {
   type Mutator,
 } from "./state";
 import type { DiffEntry } from "./types/diff";
-import { type Commit, type GitObject, type RefName, type Tree, type TreeEntry } from "./types/git";
 
 export type ViewModel<S, M> = { state: S; model: M };
 export type DerivedView = EmptyView | RepoView;
@@ -54,7 +62,7 @@ export type BlobView = {
 };
 
 export async function resolveView(
-  repoState: { name: string; repo: WebRepo } | null,
+  repoState: { name: string; repo: Repo } | null,
   state: AppState,
 ): Promise<DerivedView | Mutator<AppState>> {
   if (repoState === null) {
@@ -92,59 +100,56 @@ export async function resolveView(
 }
 
 async function deriveFileBrowserView(
-  repo: WebRepo,
+  repo: Repo,
   state: FileBrowserState,
 ): Promise<FileBrowserView | Mutator<AppState>> {
-  const refs: RefName[] = (await repo.ref_names()).map((n) => n.to_js());
+  const refs: RefName[] = await repo.ref_names();
   let commit: Commit | undefined;
-  let tree: Tree | undefined;
+  let viewingObject: GitObject | undefined;
   switch (state.commit.type) {
     case "ref": {
-      const webRef = await repo.lookup_ref(new WebRefName(state.commit.ref));
-      commit = (await webRef.peel_to_commit())?.to_js();
-      tree = (await webRef.peel_to_tree())?.to_js();
+      const webRef = await repo.lookup_ref(refNameFromPlainObject(state.commit.ref));
+      commit = await webRef.peel_to_commit(repo);
+      viewingObject = (await webRef.peel_to_tree(repo))?.as_object();
       break;
     }
     case "detached": {
-      commit = (await repo.lookup_object(state.commit.id)).to_js();
-      tree = (await repo.lookup_object(commit!.tree)).to_js();
+      commit = (await repo.lookup_object(state.commit.id)).commit();
+      viewingObject = (await commit.lookup_tree(repo))?.as_object();
     }
   }
-  if (tree === undefined) {
-    throw new Error("Tree not found");
-  }
 
-  let viewingObject: GitObject = { type: "Tree", ...tree };
   let pathComponent: string | undefined;
   for (let pathComponentIdx = 0; pathComponentIdx < state.path.length; pathComponentIdx++) {
     pathComponent = state.path[pathComponentIdx];
-    if (viewingObject.type === "Tree") {
-      const entry: TreeEntry | undefined = viewingObject.entries.find(
-        (entry) => entry.name === pathComponent,
-      );
+    if (viewingObject?.object_type() === "tree") {
+      const entry: TreeEntry | undefined = viewingObject
+        .tree()
+        .entries()
+        .find((entry) => entry.name() === pathComponent);
       if (entry === undefined) {
         return setPath(state.path.slice(0, pathComponentIdx));
       }
-      viewingObject = (await repo.lookup_object(entry.id)).to_js();
+      viewingObject = await repo.lookup_object(entry.id());
     } else {
       break;
     }
   }
-  switch (viewingObject.type) {
-    case "Tree": {
+  switch (viewingObject?.object_type()) {
+    case "tree": {
       return {
         type: "file browser",
         refs,
         commit,
-        inner: { type: "tree", entries: viewingObject.entries },
+        inner: { type: "tree", entries: viewingObject.tree().entries() },
       };
     }
-    case "Blob": {
+    case "blob": {
       return {
         type: "file browser",
         refs,
         commit,
-        inner: { type: "blob", content: viewingObject.data },
+        inner: { type: "blob", content: viewingObject.blob().data() },
       };
     }
     default: {
@@ -153,15 +158,14 @@ async function deriveFileBrowserView(
   }
 }
 
-async function deriveCommitView(repo: WebRepo, state: CommitViewState): Promise<CommitView> {
-  const commitHandle = (await repo.lookup_object(state.commitId)).commit();
-  const commit: Commit = commitHandle.to_js();
+async function deriveCommitView(repo: Repo, state: CommitViewState): Promise<CommitView> {
+  const commit = (await repo.lookup_object(state.commitId)).commit();
   let diff: Array<DiffEntry> | undefined = undefined;
-  if (commit.parents.length === 1) {
-    const parentHandle = (await commitHandle.lookup_parents())[0]!;
-    const tree = await commitHandle.lookup_tree();
-    const parentTree = await parentHandle.lookup_tree();
-    const diffHandle = await WebDiff.diff(parentTree, tree);
+  if (commit.parents().length === 1) {
+    const parent = (await commit.lookup_parents(repo))[0]!;
+    const tree = await commit.lookup_tree(repo);
+    const parentTree = await parent.lookup_tree(repo);
+    const diffHandle = await WebDiff.diff(repo, parentTree, tree);
     diff = diffHandle.to_js();
   }
   return {

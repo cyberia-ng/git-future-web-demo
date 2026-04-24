@@ -1,5 +1,4 @@
-import type { TreeEntryType } from "./git";
-
+export type TreeEntryType = "Tree" | "Symlink" | "File" | "Executable" | "Commit";
 export type DiffEntry =
   | {
     type: "LeftOnly";
