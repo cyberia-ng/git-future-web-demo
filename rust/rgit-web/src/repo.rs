@@ -1,5 +1,5 @@
 use js_sys::{JsString, TypeError};
-use rgit_core::{Repo as RGitRepo, object::ObjectId};
+use rgit_core::{Repo as RGitRepo, RepoConfig, object::ObjectId};
 use wasm_bindgen::prelude::*;
 use web_sys::{DomException, FileSystemDirectoryHandle};
 
@@ -41,7 +41,8 @@ impl Repo {
                 }
             }
         };
-        let repo = RGitRepo::new(WebDirectory::new(&handle).await?)
+        let repo = RepoConfig::default()
+            .open(WebDirectory::new(&handle).await?)
             .await
             .map_err(to_js_error)?;
         Ok(Self(repo))
