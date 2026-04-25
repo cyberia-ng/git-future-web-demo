@@ -119,6 +119,10 @@ impl Diff {
     pub fn entries(&self) -> Vec<DiffEntry> {
         self.0.clone()
     }
+
+    pub fn is_empty(&self) -> bool {
+        self.0.is_empty()
+    }
 }
 
 #[wasm_bindgen]

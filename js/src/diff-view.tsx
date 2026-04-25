@@ -1,10 +1,10 @@
 import { File } from "react-feather";
-import type { DiffEntry } from "./types/diff";
 import { assertString } from "./helpers/assert-string";
 import type { CSSProperties, ReactNode } from "react";
+import type { Diff, DiffEntry } from "../pkg/rgit_web";
 
-export function DiffEntry({ entry }: { entry: DiffEntry }) {
-  const hunks = entry.content;
+export function DiffEntryView({ entry }: { entry: DiffEntry }) {
+  const hunks = entry.hunks();
   const oldEnd = Math.max(...hunks.map((hunk) => hunk.old_end));
   const newEnd = Math.max(...hunks.map((hunk) => hunk.new_end));
   const maxOldDigits = Math.ceil(Math.log10(oldEnd + 1));
@@ -16,17 +16,18 @@ export function DiffEntry({ entry }: { entry: DiffEntry }) {
           <div>
             <File aria-label="file" size={20} />
           </div>
-          <div className="ms-2">{entry.path}</div>
+          <div className="ms-2">{entry.path()}</div>
         </div>
       </div>
       {hunks.map((hunk, idx) => {
-        const oldLength = hunk.old_end - hunk.old_start; // TODO pull to rust side?
+        const oldLength = hunk.old_end - hunk.old_start;
         const newLength = hunk.new_end - hunk.new_start;
         let oldLineIdx = hunk.old_start;
         let newLineIdx = hunk.new_start;
+        const changes = hunk.changes();
         const lines: ReactNode[] = [];
-        for (let ii = 0; ii < hunk.changes.length; ii++) {
-          const change = hunk.changes[ii]!;
+        for (let ii = 0; ii < changes.length; ii++) {
+          const change = changes[ii]!;
           const colorClass = { equal: "", insert: "bg-success", delete: "bg-danger" }[change.tag];
           lines.push(
             <div key={ii} className="row">
@@ -41,7 +42,7 @@ export function DiffEntry({ entry }: { entry: DiffEntry }) {
               <div className={`col diff-line mw-gutter-1 ${colorClass}`}>
                 {change.tag === "insert" ? "+" : change.tag === "delete" ? "-" : " "}
               </div>
-              <div className={`col diff-line ${colorClass}`}>{change.value}</div>
+              <div className={`col diff-line ${colorClass}`}>{change.value()}</div>
             </div>,
           );
           switch (change.tag) {
@@ -88,12 +89,12 @@ export function LineNumber({ number, maxDigits }: { number: number | null; maxDi
   return <div {...{ className, style }}>{number !== null && number + 1}</div>;
 }
 
-export function Diff({ entries }: { entries: Array<DiffEntry> }) {
+export function DiffView({ diff }: { diff: Diff }) {
   return (
     <>
-      {entries.map((entry) => (
-        <div key={assertString(entry.path)} className="mt-3 border rounded overflow-hidden">
-          <DiffEntry entry={entry} />
+      {diff.entries().map((entry) => (
+        <div key={assertString(entry.path())} className="mt-3 border rounded overflow-hidden">
+          <DiffEntryView entry={entry} />
         </div>
       ))}
     </>

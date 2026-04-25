@@ -2,7 +2,7 @@ import type { DetailedHTMLProps, HTMLAttributes, ReactNode } from "react";
 import type { StandardProps } from "./props";
 import { browseCommit, viewCommit, type CommitViewState } from "./state";
 import type { CommitView } from "./view";
-import { Diff } from "./diff-view";
+import { DiffView } from "./diff-view";
 import { Link } from "./link";
 
 export function CommitView({ view, updateState }: StandardProps<CommitViewState, CommitView>) {
@@ -52,9 +52,9 @@ export function CommitView({ view, updateState }: StandardProps<CommitViewState,
           <pre className="p-2 whitespace-pre-wrap">{commit.message()}</pre>
         </li>
       </ul>
-      {diff !== undefined && diff.length !== 0 && (
+      {diff !== undefined && !diff.is_empty() && (
         <div className="mt-4">
-          <Diff entries={diff} />
+          <DiffView diff={diff} />
         </div>
       )}
     </>

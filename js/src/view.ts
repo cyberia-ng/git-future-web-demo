@@ -1,10 +1,9 @@
 import {
-  WebDiff,
+  Diff,
   type Commit,
   type GitObject,
   type RefName,
   type Repo,
-  type Tree,
   type TreeEntry,
 } from "../pkg/rgit_web";
 import { assertNever } from "./helpers/assert-never";
@@ -17,7 +16,7 @@ import {
   type FileBrowserState,
   type Mutator,
 } from "./state";
-import type { DiffEntry } from "./types/diff";
+// import type { DiffEntry } from "./types/diff";
 
 export type ViewModel<S, M> = { state: S; model: M };
 export type DerivedView = EmptyView | RepoView;
@@ -41,7 +40,7 @@ export type RepoView = {
 export type CommitView = {
   type: "commit view";
   commit: Commit;
-  diff?: Array<DiffEntry>;
+  diff?: Diff;
 };
 
 export type FileBrowserView = {
@@ -160,13 +159,12 @@ async function deriveFileBrowserView(
 
 async function deriveCommitView(repo: Repo, state: CommitViewState): Promise<CommitView> {
   const commit = (await repo.lookup_object(state.commitId)).commit();
-  let diff: Array<DiffEntry> | undefined = undefined;
+  let diff: Diff | undefined = undefined;
   if (commit.parents().length === 1) {
     const parent = (await commit.lookup_parents(repo))[0]!;
     const tree = await commit.lookup_tree(repo);
     const parentTree = await parent.lookup_tree(repo);
-    const diffHandle = await WebDiff.diff(repo, parentTree, tree);
-    diff = diffHandle.to_js();
+    diff = await Diff.diff(repo, parentTree, tree);
   }
   return {
     type: "commit view",
