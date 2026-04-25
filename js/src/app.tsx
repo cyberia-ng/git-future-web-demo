@@ -24,15 +24,12 @@ import type { StandardProps } from "./props";
 import { Errors } from "./errors";
 import { produce } from "immer";
 import { FileBrowser } from "./file-browser/index";
-import { fakeViewModel } from "./fake-view";
 import { CommitView } from "./commit-view";
 import { assertNever } from "./helpers/assert-never";
 import { useHashLocation } from "./use-hash-location";
 import { Repo } from "../pkg/rgit_web";
 
 export function App() {
-  const development = (import.meta as any).env.NODE_ENV === "development";
-  const [fake, setFake] = useState(development);
   const [repo, setRepo] = useState<{ repo: Repo; name: string } | null>(null);
   const [hash, navigate] = useHashLocation();
   const [errorState, setErrorState] = useState<ErrorState>(emptyErrorState);
@@ -56,21 +53,17 @@ export function App() {
   }
 
   useEffect(() => {
-    if (fake) {
-      setViewState(fakeViewModel);
-    } else {
-      const state = fromUrl(hash);
-      resolveView(repo, state)
-        .then((modelOrMutator) => {
-          if (typeof modelOrMutator === "function") {
-            updateState(modelOrMutator);
-          } else {
-            setViewState({ state, model: modelOrMutator });
-          }
-        })
-        .catch(handleError);
-    }
-  }, [fake, repo, hash]);
+    const state = fromUrl(hash);
+    resolveView(repo, state)
+      .then((modelOrMutator) => {
+        if (typeof modelOrMutator === "function") {
+          updateState(modelOrMutator);
+        } else {
+          setViewState({ state, model: modelOrMutator });
+        }
+      })
+      .catch(handleError);
+  }, [repo, hash]);
 
   async function openRepo() {
     if (!window.showDirectoryPicker) {
@@ -83,9 +76,8 @@ export function App() {
     updateErrorState(resetErrors());
   }
   async function closeRepo() {
-    setFake(false);
     if (repo !== null) {
-      repo.repo.close()
+      repo.repo.close();
     }
     setRepo(null);
     updateState(reset());
@@ -100,15 +92,8 @@ export function App() {
             {viewState.model.type === "repo" ? viewState.model.name : "rgit-web"}
           </h4>
         </div>
-        {development && (
-          <div>
-            <button className="btn btn-secondary me-3" onClick={() => setFake(true)}>
-              Use fake data
-            </button>
-          </div>
-        )}
         <div>
-          {repo === null && !fake ? (
+          {repo === null ? (
             <button onClick={() => openRepo().catch(handleError)} className="btn btn-primary">
               Open repo
             </button>
