@@ -70,4 +70,8 @@ impl Repo {
         let object = self.0.lookup_object(id).await.map_err(to_js_error)?;
         Ok(GitObject(object))
     }
+
+    pub fn close(self) {
+        drop(self)
+    }
 }

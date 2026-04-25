@@ -84,6 +84,9 @@ export function App() {
   }
   async function closeRepo() {
     setFake(false);
+    if (repo !== null) {
+      repo.repo.close()
+    }
     setRepo(null);
     updateState(reset());
     updateErrorState(resetErrors());
