@@ -1,4 +1,5 @@
-import type { RefNamePlainObject } from "./ref";
+import type { RefNamePlainObject } from "../ref";
+import type { Mutator } from "./mutator";
 
 export type AppState = { type: "initial" } | FileBrowserState | CommitViewState;
 
@@ -27,8 +28,6 @@ export type CommitViewState = {
   commitId: string;
 };
 
-export type Mutator<State> = (draft: State) => State | undefined;
-
 export function reset(): Mutator<AppState> {
   return () => initialAppState;
 }
@@ -50,13 +49,11 @@ export function setPath(path: string[]): Mutator<AppState> {
 }
 
 export function browseCommit(id: string): Mutator<AppState> {
-  return () => {
-    return {
-      type: "file browser",
-      commit: { type: "detached", id },
-      path: [],
-    };
-  };
+  return () => ({
+    type: "file browser",
+    commit: { type: "detached", id },
+    path: [],
+  });
 }
 
 export function setFileBrowserRef(ref: RefNamePlainObject): Mutator<AppState> {
@@ -71,31 +68,8 @@ export function viewCommit(id: string): Mutator<AppState> {
   return () => ({
     type: "commit view",
     commitId: id,
+    showLargeDiff: false,
   });
-}
-
-export const emptyErrorState: ErrorState = {
-  messages: [],
-};
-
-export type ErrorState = {
-  messages: string[];
-};
-
-export function resetErrors(): Mutator<ErrorState> {
-  return (_) => emptyErrorState;
-}
-
-export function addError(message: string): Mutator<ErrorState> {
-  return (draft) => {
-    draft.messages.push(message);
-  };
-}
-
-export function dismissError(idx: number): Mutator<ErrorState> {
-  return (draft) => {
-    draft.messages = [...draft.messages.slice(0, idx), ...draft.messages.slice(idx + 1)];
-  };
 }
 
 export function toUrl(state: AppState): string {
@@ -173,7 +147,11 @@ export function fromUrl(url: string): AppState {
       };
     }
     case "commit": {
-      return { type: "commit view", commitId: components.shift() ?? "" };
+      const commitId = components.shift() ?? "";
+      return {
+        type: "commit view",
+        commitId,
+      };
     }
     default: {
       return initialAppState;

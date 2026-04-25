@@ -1,28 +1,31 @@
 import {
-  Diff,
+  FullDiff,
+  TreeDiff,
   type Commit,
   type GitObject,
   type RefName,
   type Repo,
   type TreeEntry,
-} from "../pkg/rgit_web";
-import { assertNever } from "./helpers/assert-never";
-import { refNameFromPlainObject } from "./ref";
+} from "../../pkg/rgit_web";
+import { assertNever } from "../helpers/assert-never";
+import { refNameFromPlainObject } from "../ref";
+import type { DiffWorkerHandle } from "../worker/handler";
+import type { Effect } from "./effect";
+import { receiveDiff, type EphemeralState } from "./ephemeral";
 import {
   reset,
   setPath,
   type AppState,
   type CommitViewState,
   type FileBrowserState,
-  type Mutator,
 } from "./state";
-// import type { DiffEntry } from "./types/diff";
+import type { Mutator } from "./mutator";
 
-export type ViewModel<S, M> = { state: S; model: M };
+export type ViewModel<S, D, E> = { state: S; derived: D; ephemeral: E };
 export type DerivedView = EmptyView | RepoView;
 
-export function viewModel<S, M>(state: S, model: M): ViewModel<S, M> {
-  return { state, model };
+export function viewModel<S, D, E>(state: S, derived: D, ephemeral: E): ViewModel<S, D, E> {
+  return { state, derived, ephemeral };
 }
 
 export type EmptyView = {
@@ -40,7 +43,6 @@ export type RepoView = {
 export type CommitView = {
   type: "commit view";
   commit: Commit;
-  diff?: Diff;
 };
 
 export type FileBrowserView = {
@@ -61,38 +63,43 @@ export type BlobView = {
 };
 
 export async function resolveView(
-  repoState: { name: string; repo: Repo } | null,
+  repoState: { name: string; repo: Repo; diffWorker: DiffWorkerHandle } | null,
   state: AppState,
-): Promise<DerivedView | Mutator<AppState>> {
+): Promise<[DerivedView | Mutator<AppState>, (Effect<EphemeralState> | undefined)?]> {
   if (repoState === null) {
     if (state.type !== "initial") {
-      return reset();
+      return [reset()];
     } else {
-      return emptyView;
+      return [emptyView];
     }
   }
-  const { name, repo } = repoState;
+  const { name, repo, diffWorker } = repoState;
   switch (state.type) {
     case "initial":
-      return emptyView;
+      return [emptyView];
     case "file browser": {
       const fileBrowserView = await deriveFileBrowserView(repo, state);
       if (typeof fileBrowserView === "function") {
-        return fileBrowserView;
+        return [fileBrowserView];
       }
-      return {
-        type: "repo",
-        name,
-        inner: fileBrowserView,
-      };
+      return [
+        {
+          type: "repo",
+          name,
+          inner: fileBrowserView,
+        },
+      ];
     }
     case "commit view": {
-      const commitView = await deriveCommitView(repo, state);
-      return {
-        type: "repo",
-        name,
-        inner: commitView,
-      };
+      const [commitView, effects] = await deriveCommitView(repo, diffWorker, state);
+      return [
+        {
+          type: "repo",
+          name,
+          inner: commitView,
+        },
+        effects,
+      ];
     }
   }
   assertNever(state);
@@ -157,18 +164,30 @@ async function deriveFileBrowserView(
   }
 }
 
-async function deriveCommitView(repo: Repo, state: CommitViewState): Promise<CommitView> {
+async function deriveCommitView(
+  repo: Repo,
+  diffWorker: DiffWorkerHandle,
+  state: CommitViewState,
+): Promise<[CommitView, (Effect<EphemeralState> | undefined)?]> {
   const commit = (await repo.lookup_object(state.commitId)).commit();
-  let diff: Diff | undefined = undefined;
+  let effect: Effect<EphemeralState> | undefined = undefined;
   if (commit.parents().length === 1) {
     const parent = (await commit.lookup_parents(repo))[0]!;
-    const tree = await commit.lookup_tree(repo);
-    const parentTree = await parent.lookup_tree(repo);
-    diff = await Diff.diff(repo, parentTree, tree);
+    const tree = commit.tree();
+    const parentTree = parent.tree();
+    effect = async (updateEphemeralState) => {
+      updateEphemeralState((s) => {
+        s.diff = { type: "loading", trees: [parentTree, tree] };
+      });
+      const diff = await diffWorker.diff([parentTree, tree]);
+      updateEphemeralState(receiveDiff([parentTree, tree], diff));
+    };
   }
-  return {
-    type: "commit view",
-    commit: commit,
-    ...(diff === undefined ? {} : { diff }),
-  };
+  return [
+    {
+      type: "commit view",
+      commit: commit,
+    },
+    effect,
+  ];
 }

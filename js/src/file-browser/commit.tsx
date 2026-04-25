@@ -1,11 +1,11 @@
 import { GitCommit } from "react-feather";
 import type { StandardProps } from "../props";
-import type { FileBrowserView } from "../view";
-import { viewCommit } from "../state";
+import type { FileBrowserView } from "../model/view-model";
+import { viewCommit } from "../model/state";
 import { Link } from "../link";
 
 export function Commit({ view, updateState }: StandardProps<unknown, FileBrowserView>) {
-  const commit = view.model.commit;
+  const commit = view.derived.commit;
   if (commit === undefined) {
     return <></>;
   }

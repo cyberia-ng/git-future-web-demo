@@ -1,13 +1,14 @@
 import type { DetailedHTMLProps, HTMLAttributes, ReactNode } from "react";
 import type { StandardProps } from "./props";
-import { browseCommit, viewCommit, type CommitViewState } from "./state";
-import type { CommitView } from "./view";
+import { browseCommit, viewCommit, type CommitViewState } from "./model/state";
+import type { CommitView } from "./model/view-model";
 import { DiffView } from "./diff-view";
 import { Link } from "./link";
+import type { EphemeralState } from "./model/ephemeral";
 
 export function CommitView({ view, updateState }: StandardProps<CommitViewState, CommitView>) {
-  const diff = view.model.diff;
-  const commit = view.model.commit;
+  const diff = view.ephemeral.diff;
+  const commit = view.derived.commit;
   const differentCommitter =
     commit.committer_name !== commit.author_name || commit.committer_email !== commit.author_email;
   const differentCommitDate = commit.commit_date !== commit.author_date;
@@ -52,13 +53,24 @@ export function CommitView({ view, updateState }: StandardProps<CommitViewState,
           <pre className="p-2 whitespace-pre-wrap">{commit.message()}</pre>
         </li>
       </ul>
-      {diff !== undefined && !diff.is_empty() && (
-        <div className="mt-4">
-          <DiffView diff={diff} />
-        </div>
-      )}
+      <DiffSelector diff={diff} />
     </>
   );
+}
+
+function DiffSelector({ diff }: { diff: EphemeralState["diff"] }) {
+  switch (diff?.type) {
+    case undefined:
+      return null;
+    case "loading":
+      return "diff loading";
+    case "loaded":
+      return (
+        <div className="mt-4">
+          <DiffView diff={diff.diff} />
+        </div>
+      );
+  }
 }
 
 function CommitHeader({

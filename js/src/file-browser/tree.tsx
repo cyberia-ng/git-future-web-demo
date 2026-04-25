@@ -2,14 +2,14 @@ import type { ReactNode } from "react";
 import { Folder, File, Link as LinkIcon, ExternalLink } from "react-feather";
 import { assertString } from "../helpers/assert-string";
 import type { StandardProps } from "../props";
-import { type FileBrowserState, appendPath } from "../state";
-import type { TreeView } from "../view";
+import { type FileBrowserState, appendPath } from "../model/state";
+import type { TreeView } from "../model/view-model";
 import { Link } from "../link";
 import type { TreeEntry } from "../../pkg/rgit_web";
 
 export function Tree({ view, updateState }: StandardProps<FileBrowserState, TreeView>) {
-  const directories = view.model.entries.filter((entry) => entry.entry_type === "tree");
-  const others = view.model.entries.filter((entry) => entry.entry_type !== "tree");
+  const directories = view.derived.entries.filter((entry) => entry.entry_type === "tree");
+  const others = view.derived.entries.filter((entry) => entry.entry_type !== "tree");
   function Entry({ entry }: { entry: TreeEntry }) {
     let icon: ReactNode;
     switch (entry.entry_type) {

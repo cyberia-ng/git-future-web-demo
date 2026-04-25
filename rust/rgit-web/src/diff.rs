@@ -4,77 +4,166 @@ use crate::{
     object::{Tree, TreeEntryType},
     repo::Repo,
 };
+use js_sys::Uint8Array;
+use postcard::{from_bytes, to_allocvec};
 use rgit_core::diff as rgit_diff;
+use serde::{Deserialize, Serialize};
 use similar::TextDiffConfig;
 use wasm_bindgen::prelude::*;
 
 #[wasm_bindgen]
+#[derive(Clone, Copy, Serialize, Deserialize)]
 pub enum DiffEntryType {
     LeftOnly = "left only",
     Both = "both",
     RightOnly = "right only",
 }
 
-#[wasm_bindgen]
-#[derive(Clone)]
-pub struct DiffEntry(rgit_diff::DiffEntry<Vec<Hunk>>);
+#[derive(Clone, Serialize, Deserialize)]
+pub struct DiffEntry<Content> {
+    kind: DiffEntryType,
+    #[serde(with = "serde_bytes")]
+    path: Vec<u8>,
+    left_type: Option<TreeEntryType>,
+    right_type: Option<TreeEntryType>,
+    content: Content,
+}
 
-#[wasm_bindgen]
-impl DiffEntry {
-    pub fn discriminator(&self) -> DiffEntryType {
-        use DiffEntryType::*;
-        match self.0 {
-            rgit_diff::DiffEntry::LeftOnly { .. } => LeftOnly,
-            rgit_diff::DiffEntry::Both { .. } => Both,
-            rgit_diff::DiffEntry::RightOnly { .. } => RightOnly,
-        }
-    }
-
-    #[wasm_bindgen(unchecked_return_type = "MaybeUtf8")]
-    pub fn path(&self) -> JsValue {
-        self.0.path().as_slice().maybe_utf8()
-    }
-
-    pub fn hunks(&self) -> Vec<Hunk> {
-        self.0.content().clone()
-    }
-
-    pub fn left_entry_type(&self) -> TreeEntryType {
-        match self.0 {
-            rgit_diff::DiffEntry::LeftOnly { entry_type, .. }
-            | rgit_diff::DiffEntry::Both {
-                left_type: entry_type,
-                ..
-            } => entry_type.into(),
-            rgit_diff::DiffEntry::RightOnly { .. } => {
-                panic!("no left entry type on right only diff entry")
-            }
-        }
-    }
-
-    pub fn right_entry_type(&self) -> TreeEntryType {
-        match self.0 {
-            rgit_diff::DiffEntry::RightOnly { entry_type, .. }
-            | rgit_diff::DiffEntry::Both {
-                left_type: entry_type,
-                ..
-            } => entry_type.into(),
-            rgit_diff::DiffEntry::LeftOnly { .. } => {
-                panic!("no left entry type on left only diff entry")
-            }
+impl<Content> From<rgit_diff::DiffEntry<Content>> for DiffEntry<Content> {
+    fn from(value: rgit_diff::DiffEntry<Content>) -> Self {
+        match value {
+            rgit_diff::DiffEntry::LeftOnly {
+                path,
+                entry_type,
+                content,
+            } => Self {
+                kind: DiffEntryType::LeftOnly,
+                path: path.inner(),
+                left_type: Some(entry_type.into()),
+                right_type: None,
+                content,
+            },
+            rgit_diff::DiffEntry::Both {
+                path,
+                left_type,
+                right_type,
+                content,
+            } => Self {
+                kind: DiffEntryType::Both,
+                path: path.inner(),
+                left_type: Some(left_type.into()),
+                right_type: Some(right_type.into()),
+                content,
+            },
+            rgit_diff::DiffEntry::RightOnly {
+                path,
+                entry_type,
+                content,
+            } => Self {
+                kind: DiffEntryType::RightOnly,
+                path: path.inner(),
+                left_type: None,
+                right_type: Some(entry_type.into()),
+                content,
+            },
         }
     }
 }
 
-#[wasm_bindgen]
-pub struct Diff(pub(crate) Vec<DiffEntry>);
+impl<Content> DiffEntry<Content> {
+    fn path(&self) -> &[u8] {
+        self.path.as_slice()
+    }
+
+    pub fn left_entry_type(&self) -> TreeEntryType {
+        self.left_type
+            .expect("no left entry type on right only diff entry")
+    }
+
+    pub fn right_entry_type(&self) -> TreeEntryType {
+        self.right_type
+            .expect("no right entry type on left only diff entry")
+    }
+}
 
 #[wasm_bindgen]
-impl Diff {
-    pub async fn diff(repo: &Repo, left: &Tree, right: &Tree) -> Result<Diff, JsValue> {
-        let tree_diff = rgit_diff::TreeDiff::new(&repo.0, &left.0, &right.0)
-            .await
-            .map_err(to_js_error)?;
+#[derive(Clone)]
+pub struct TreeDiffEntry(DiffEntry<()>);
+
+#[wasm_bindgen]
+impl TreeDiffEntry {
+    pub fn discriminator(&self) -> DiffEntryType {
+        self.0.kind
+    }
+
+    #[wasm_bindgen(unchecked_return_type = "MaybeUtf8")]
+    pub fn path(&self) -> JsValue {
+        self.0.path().maybe_utf8()
+    }
+
+    pub fn left_entry_type(&self) -> TreeEntryType {
+        self.0.left_entry_type()
+    }
+
+    pub fn right_entry_type(&self) -> TreeEntryType {
+        self.0.right_entry_type()
+    }
+}
+
+#[wasm_bindgen]
+#[derive(Clone, Serialize, Deserialize)]
+pub struct FullDiffEntry(DiffEntry<Vec<Hunk>>);
+
+#[wasm_bindgen]
+impl FullDiffEntry {
+    pub fn discriminator(&self) -> DiffEntryType {
+        self.0.kind
+    }
+
+    #[wasm_bindgen(unchecked_return_type = "MaybeUtf8")]
+    pub fn path(&self) -> JsValue {
+        self.0.path().maybe_utf8()
+    }
+
+    pub fn hunks(&self) -> Vec<Hunk> {
+        self.0.content.clone()
+    }
+
+    pub fn left_entry_type(&self) -> TreeEntryType {
+        self.0.left_entry_type()
+    }
+
+    pub fn right_entry_type(&self) -> TreeEntryType {
+        self.0.right_entry_type()
+    }
+}
+
+#[wasm_bindgen]
+pub struct TreeDiff(rgit_diff::TreeDiff);
+
+#[wasm_bindgen]
+impl TreeDiff {
+    pub async fn diff(repo: &Repo, left: &Tree, right: &Tree) -> Result<Self, JsValue> {
+        Ok(Self(
+            rgit_diff::TreeDiff::new(&repo.0, &left.0, &right.0)
+                .await
+                .map_err(to_js_error)?,
+        ))
+    }
+
+    pub fn len(&self) -> usize {
+        self.0.entries().len()
+    }
+}
+
+#[wasm_bindgen]
+#[derive(Serialize, Deserialize)]
+pub struct FullDiff(pub(crate) Vec<FullDiffEntry>);
+
+#[wasm_bindgen]
+impl FullDiff {
+    pub async fn from_tree_diff(repo: &Repo, tree_diff: &TreeDiff) -> Result<Self, JsValue> {
+        let tree_diff = &tree_diff.0;
         let diff = tree_diff
             .to_text_diff(&repo.0, TextDiffConfig::default())
             .await
@@ -111,22 +200,32 @@ impl Diff {
                     Ok(hunks)
                 })
                 .map_err(|_| JsError::new("invalid UTF-8"))?;
-            entries.push(DiffEntry(entry));
+            entries.push(FullDiffEntry(entry.into()));
         }
-        Ok(Diff(entries))
+        Ok(FullDiff(entries))
     }
 
-    pub fn entries(&self) -> Vec<DiffEntry> {
+    pub fn entries(&self) -> Vec<FullDiffEntry> {
         self.0.clone()
     }
 
     pub fn is_empty(&self) -> bool {
         self.0.is_empty()
     }
+
+    pub fn serialize(&self) -> Result<Uint8Array, JsValue> {
+        let buf = to_allocvec(self).map_err(|e| JsError::new(&e.to_string()))?;
+        Ok(Uint8Array::from(buf.as_slice()))
+    }
+
+    pub fn deserialize(buf: &Uint8Array) -> Result<Self, JsValue> {
+        let buf = buf.to_vec();
+        Ok(from_bytes(buf.as_slice()).map_err(|e| JsError::new(&e.to_string()))?)
+    }
 }
 
 #[wasm_bindgen]
-#[derive(Clone, Copy)]
+#[derive(Clone, Copy, Serialize, Deserialize)]
 pub enum ChangeTag {
     Equal = "equal",
     Delete = "delete",
@@ -145,9 +244,10 @@ impl From<similar::ChangeTag> for ChangeTag {
 }
 
 #[wasm_bindgen]
-#[derive(Clone)]
+#[derive(Clone, Serialize, Deserialize)]
 pub struct LineChange {
     pub tag: ChangeTag,
+    #[serde(with = "serde_bytes")]
     value: Vec<u8>,
 }
 
@@ -160,7 +260,7 @@ impl LineChange {
 }
 
 #[wasm_bindgen]
-#[derive(Clone)]
+#[derive(Clone, Serialize, Deserialize)]
 pub struct Hunk {
     pub old_start: usize,
     pub old_end: usize,

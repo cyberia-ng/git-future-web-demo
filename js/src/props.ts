@@ -1,9 +1,9 @@
-import type { AppState, Mutator } from "./state";
-import type { ViewModel } from "./view";
+import type { AppState } from "./model/state";
+import type { Mutator } from "./model/mutator";
+import type { DerivedView, ViewModel } from "./model/view-model";
+import type { EphemeralState } from "./model/ephemeral";
 
-export type UpdateState = (mutator: Mutator<AppState>) => void;
-
-export type StandardProps<S, M> = {
-  view: ViewModel<S, M>;
-  updateState: UpdateState;
+export type StandardProps<S = AppState, D = DerivedView, E = EphemeralState> = {
+  view: ViewModel<S, D, E>;
+  updateState: (mutator: Mutator<AppState>) => void;
 };

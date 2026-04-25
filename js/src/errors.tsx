@@ -1,11 +1,12 @@
-import { dismissError, type ErrorState, type Mutator } from "./state";
+import { dismissError, type EphemeralState } from "./model/ephemeral";
+import type { Mutator } from "./model/mutator";
 
 export function Errors({
   state,
   updateErrorState,
 }: {
-  state: ErrorState;
-  updateErrorState: (mutator: Mutator<ErrorState>) => void;
+  state: EphemeralState["errors"];
+  updateErrorState: (mutator: Mutator<EphemeralState>) => void;
 }) {
   return (
     <>

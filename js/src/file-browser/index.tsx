@@ -1,7 +1,7 @@
 import { BlobComponent } from "./blob";
 import type { StandardProps } from "../props";
-import { setPath, type FileBrowserState } from "../state";
-import { viewModel, type FileBrowserView } from "../view";
+import { setPath, type FileBrowserState } from "../model/state";
+import { viewModel, type FileBrowserView } from "../model/view-model";
 import { Tree } from "./tree";
 import { RefNav } from "./ref-nav";
 import { Folder } from "react-feather";
@@ -13,19 +13,25 @@ export function FileBrowser({
   updateState,
 }: StandardProps<FileBrowserState, FileBrowserView>) {
   const nav = <FileBrowserNav view={view} updateState={updateState} />;
-  switch (view.model.inner.type) {
+  switch (view.derived.inner.type) {
     case "tree":
       return (
         <>
           {nav}
-          <Tree view={viewModel(view.state, view.model.inner)} updateState={updateState} />
+          <Tree
+            view={viewModel(view.state, view.derived.inner, view.ephemeral)}
+            updateState={updateState}
+          />
         </>
       );
     case "blob":
       return (
         <>
           {nav}
-          <BlobComponent view={viewModel(view.state, view.model.inner)} updateState={updateState} />
+          <BlobComponent
+            view={viewModel(view.state, view.derived.inner, view.ephemeral)}
+            updateState={updateState}
+          />
         </>
       );
   }
@@ -64,7 +70,7 @@ export function FileBrowserNav({
               {view.state.path.length > 0 && (
                 <li className="breadcrumb-item">{view.state.path[view.state.path.length - 1]}</li>
               )}
-              {view.model.inner.type === "tree" && <li className="breadcrumb-item"></li>}
+              {view.derived.inner.type === "tree" && <li className="breadcrumb-item"></li>}
             </ol>
           </nav>
         )}

@@ -1,14 +1,17 @@
 import type { StandardProps } from "../props";
-import type { FileBrowserState } from "../state";
-import type { BlobView } from "../view";
+import type { FileBrowserState } from "../model/state";
+import type { BlobView } from "../model/view-model";
 import { Highlight, themes } from "prism-react-renderer";
 
-export function BlobComponent({ view, updateState }: StandardProps<FileBrowserState, BlobView>) {
+export function BlobComponent({
+  view,
+  updateState,
+}: StandardProps<FileBrowserState, BlobView>) {
   let content: { type: "text"; content: string } | { type: "binary"; content: Uint8Array };
-  if (typeof view.model.content === "string") {
-    content = { type: "text", content: view.model.content };
+  if (typeof view.derived.content === "string") {
+    content = { type: "text", content: view.derived.content };
   } else {
-    content = { type: "binary", content: view.model.content };
+    content = { type: "binary", content: view.derived.content };
   }
   switch (content.type) {
     case "text": {

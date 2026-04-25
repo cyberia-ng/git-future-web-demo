@@ -1,7 +1,7 @@
 import type { StandardProps } from "../props";
-import { setFileBrowserRef, type FileBrowserCommit, type FileBrowserState } from "../state";
+import { setFileBrowserRef, type FileBrowserCommit, type FileBrowserState } from "../model/state";
 import { ExternalLink, GitBranch, GitCommit, Tag, type IconProps } from "react-feather";
-import type { FileBrowserView } from "../view";
+import type { FileBrowserView } from "../model/view-model";
 import { assertString } from "../helpers/assert-string";
 import { assertNever } from "../helpers/assert-never";
 import { Link } from "../link";
@@ -9,7 +9,7 @@ import type { RefName } from "../../pkg/rgit_web";
 import { refNameToPlainObject, type RefNamePlainObject } from "../ref";
 
 export function RefNav({ view, updateState }: StandardProps<FileBrowserState, FileBrowserView>) {
-  const sortedRefs = view.model.refs.toSorted((a, b) => {
+  const sortedRefs = view.derived.refs.toSorted((a, b) => {
     const typeOrderDiff = refTypeOrder(a) - refTypeOrder(b);
     if (typeOrderDiff !== 0) return typeOrderDiff;
     else if (a.discriminator() === "head" || b.discriminator() === "head") {

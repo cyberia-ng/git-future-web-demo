@@ -1,65 +1,68 @@
-import { useEffect, useState } from "react";
-import {
-  addError,
-  emptyErrorState,
-  fromUrl,
-  initialAppState,
-  initialFileBrowserState,
-  reset,
-  resetErrors,
-  toUrl,
-  type AppState,
-  type ErrorState,
-  type Mutator,
-} from "./state";
+import { useEffect, useReducer, useState } from "react";
+import { fromUrl, initialFileBrowserState, reset, toUrl, type AppState } from "./model/state";
 import {
   emptyView,
   resolveView,
   viewModel,
   type DerivedView,
   type RepoView,
-  type ViewModel,
-} from "./view";
+} from "./model/view-model";
 import type { StandardProps } from "./props";
 import { Errors } from "./errors";
-import { produce } from "immer";
 import { FileBrowser } from "./file-browser/index";
 import { CommitView } from "./commit-view";
 import { assertNever } from "./helpers/assert-never";
 import { useHashLocation } from "./use-hash-location";
 import { Repo } from "../pkg/rgit_web";
+import { DiffWorkerHandle } from "./worker/handler";
+import {
+  addError,
+  emptyEphemeralState,
+  resetEphemeral,
+  type EphemeralState,
+} from "./model/ephemeral";
+import type { Mutator } from "./model/mutator";
+import { produce } from "immer";
 
 export function App() {
-  const [repo, setRepo] = useState<{ repo: Repo; name: string } | null>(null);
+  const [repo, setRepo] = useState<{
+    repo: Repo;
+    diffWorker: DiffWorkerHandle;
+    name: string;
+  } | null>(null);
   const [hash, navigate] = useHashLocation();
-  const [errorState, setErrorState] = useState<ErrorState>(emptyErrorState);
-  const [viewState, setViewState] = useState<ViewModel<AppState, DerivedView>>(
-    viewModel(initialAppState, emptyView),
-  );
+  const [ephemeralState, updateEphemeralState] = useReducer<
+    EphemeralState,
+    [Mutator<EphemeralState>]
+  >(produce, emptyEphemeralState);
+  const [derivedView, setDerivedView] = useState<DerivedView>(emptyView);
+  const [appState, setAppState] = useState<AppState>(fromUrl(hash));
 
-  function updateState(mutator: Mutator<AppState>) {
+  function stateNavigate(mutator: Mutator<AppState>) {
     navigate(toUrl(produce(fromUrl(hash), mutator)));
-  }
-  function updateErrorState(mutator: Mutator<ErrorState>) {
-    setErrorState(produce(errorState, mutator));
   }
   function handleError(e: unknown) {
     if (e instanceof Error) {
-      updateErrorState(addError(e.message));
+      updateEphemeralState(addError(e.message));
     } else {
-      updateErrorState(addError("Handled an error without a message"));
+      updateEphemeralState(addError("Handled an error without a message"));
     }
     console.error(e);
   }
 
   useEffect(() => {
-    const state = fromUrl(hash);
-    resolveView(repo, state)
-      .then((modelOrMutator) => {
-        if (typeof modelOrMutator === "function") {
-          updateState(modelOrMutator);
+    const newState = fromUrl(hash);
+    resolveView(repo, newState)
+      .then(([derivedViewOrMutator, effect]) => {
+        if (typeof derivedViewOrMutator === "function") {
+          stateNavigate(derivedViewOrMutator);
         } else {
-          setViewState({ state, model: modelOrMutator });
+          setDerivedView(derivedViewOrMutator);
+          setAppState(newState);
+          updateEphemeralState(resetEphemeral);
+          if (effect !== undefined) {
+            effect(updateEphemeralState).catch(handleError);
+          }
         }
       })
       .catch(handleError);
@@ -71,26 +74,28 @@ export function App() {
     }
     const handle = await window.showDirectoryPicker();
     const repo = await Repo.construct(handle);
-    setRepo({ repo, name: handle.name });
-    updateState(() => initialFileBrowserState);
-    updateErrorState(resetErrors());
+    const diffWorker = await DiffWorkerHandle.init({
+      directory: handle,
+    });
+    setRepo({ repo, diffWorker, name: handle.name });
+    stateNavigate(() => initialFileBrowserState);
+    updateEphemeralState(resetEphemeral);
   }
   async function closeRepo() {
     if (repo !== null) {
       repo.repo.close();
+      repo.diffWorker.close();
     }
     setRepo(null);
-    updateState(reset());
-    updateErrorState(resetErrors());
+    stateNavigate(reset());
+    updateEphemeralState(resetEphemeral);
   }
 
   return (
     <div className="col-lg-8 mx-auto p-4 py-md-5">
       <header className="d-flex flex-wrap pb-3 mb-5 border-bottom">
         <div className="flex-grow-1">
-          <h4 className="mb-0">
-            {viewState.model.type === "repo" ? viewState.model.name : "rgit-web"}
-          </h4>
+          <h4 className="mb-0">{derivedView.type === "repo" ? derivedView.name : "rgit-web"}</h4>
         </div>
         <div>
           {repo === null ? (
@@ -105,33 +110,42 @@ export function App() {
         </div>
       </header>
       <main>
-        <Errors state={errorState} updateErrorState={updateErrorState} />
-        {viewState.model.type === "repo" && (
-          <RepoView view={viewModel(viewState.state, viewState.model)} updateState={updateState} />
+        <Errors state={ephemeralState.errors} updateErrorState={updateEphemeralState} />
+        {derivedView.type === "repo" && (
+          <RepoView
+            view={viewModel(appState, derivedView, ephemeralState)}
+            updateState={stateNavigate}
+          />
         )}
       </main>
     </div>
   );
 }
 
-function RepoView({ view, updateState }: StandardProps<AppState, RepoView>) {
+function RepoView({ view, updateState }: StandardProps<AppState, RepoView, EphemeralState>) {
   switch (view.state.type) {
     case "initial":
       return <></>;
     case "file browser": {
-      if (view.model.inner.type !== "file browser") {
+      if (view.derived.inner.type !== "file browser") {
         throw new Error("unreachable");
       }
       return (
-        <FileBrowser view={viewModel(view.state, view.model.inner)} updateState={updateState} />
+        <FileBrowser
+          view={viewModel(view.state, view.derived.inner, view.ephemeral)}
+          updateState={updateState}
+        />
       );
     }
     case "commit view": {
-      if (view.model.inner.type !== "commit view") {
+      if (view.derived.inner.type !== "commit view") {
         throw new Error("unreachable");
       }
       return (
-        <CommitView view={viewModel(view.state, view.model.inner)} updateState={updateState} />
+        <CommitView
+          view={viewModel(view.state, view.derived.inner, view.ephemeral)}
+          updateState={updateState}
+        />
       );
     }
   }

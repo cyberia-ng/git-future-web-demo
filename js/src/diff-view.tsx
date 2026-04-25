@@ -1,9 +1,9 @@
 import { File } from "react-feather";
 import { assertString } from "./helpers/assert-string";
 import type { CSSProperties, ReactNode } from "react";
-import type { Diff, DiffEntry } from "../pkg/rgit_web";
+import type { FullDiff, FullDiffEntry } from "../pkg/rgit_web";
 
-export function DiffEntryView({ entry }: { entry: DiffEntry }) {
+export function DiffEntryView({ entry }: { entry: FullDiffEntry }) {
   const hunks = entry.hunks();
   const oldEnd = Math.max(...hunks.map((hunk) => hunk.old_end));
   const newEnd = Math.max(...hunks.map((hunk) => hunk.new_end));
@@ -89,7 +89,7 @@ export function LineNumber({ number, maxDigits }: { number: number | null; maxDi
   return <div {...{ className, style }}>{number !== null && number + 1}</div>;
 }
 
-export function DiffView({ diff }: { diff: Diff }) {
+export function DiffView({ diff }: { diff: FullDiff }) {
   return (
     <>
       {diff.entries().map((entry) => (
