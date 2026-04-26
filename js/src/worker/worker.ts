@@ -1,4 +1,9 @@
-import init, { FullDiff, Repo, set_panic_hook, TreeDiff } from "../../pkg/rgit_web.js";
+import init, {
+  FullDiffFactory,
+  Repo,
+  set_panic_hook,
+  TreeDiffFactory,
+} from "../../pkg/rgit_web.js";
 import type { DiffRequest, DiffResponse } from "./types";
 
 onmessage = function onMessage(e: MessageEvent<DiffRequest>) {
@@ -13,7 +18,7 @@ onmessage = function onMessage(e: MessageEvent<DiffRequest>) {
     case "request diff": {
       const trees = e.data.trees;
       worker.diff(trees).then((serialized) => {
-        pm({ type: "full diff", trees, serialized }, [serialized.buffer]);
+        serialized && pm({ type: "full diff", trees, serialized }, [serialized.buffer]);
       });
       break;
     }
@@ -31,6 +36,9 @@ function pm(message: DiffResponse, transfer?: Transferable[]) {
 let worker: DiffWorker;
 
 class DiffWorker {
+  private tree_diff_factory?: TreeDiffFactory;
+  private full_diff_factory?: FullDiffFactory;
+
   private constructor(private repo: Repo) { }
 
   static async init(directory: FileSystemDirectoryHandle) {
@@ -40,11 +48,23 @@ class DiffWorker {
   }
 
   async diff([left, right]: [string, string]) {
-    const leftTree = (await this.repo.lookup_object(left)).tree();
-    const rightTree = (await this.repo.lookup_object(right)).tree();
-    const treeDiff = await TreeDiff.diff(this.repo, leftTree, rightTree);
-    const diff = await FullDiff.from_tree_diff(this.repo, treeDiff);
-    const serialized = diff.serialize();
-    return serialized;
+    this.tree_diff_factory?.cancel();
+    this.full_diff_factory?.cancel();
+    try {
+      const leftTree = (await this.repo.lookup_object(left)).tree();
+      const rightTree = (await this.repo.lookup_object(right)).tree();
+      this.tree_diff_factory = new TreeDiffFactory();
+      const treeDiff = await this.tree_diff_factory.diff(this.repo, leftTree, rightTree);
+      this.full_diff_factory = new FullDiffFactory();
+      const diff = await this.full_diff_factory.from_tree_diff(this.repo, treeDiff);
+      const serialized = diff.serialize();
+      return serialized;
+    } catch (e) {
+      if (e === "diff canceled") {
+        return undefined;
+      } else {
+        throw e;
+      }
+    }
   }
 }

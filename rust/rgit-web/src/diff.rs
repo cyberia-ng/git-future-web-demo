@@ -6,9 +6,13 @@ use crate::{
 };
 use js_sys::Uint8Array;
 use postcard::{from_bytes, to_allocvec};
-use rgit_core::diff as rgit_diff;
+use rgit_core::{
+    diff::{self as rgit_diff},
+    error::Error,
+};
 use serde::{Deserialize, Serialize};
 use similar::TextDiffConfig;
+use std::{cell::Cell, rc::Rc};
 use wasm_bindgen::prelude::*;
 
 #[wasm_bindgen]
@@ -139,18 +143,38 @@ impl FullDiffEntry {
 }
 
 #[wasm_bindgen]
+pub struct TreeDiffFactory {
+    canceled: Rc<Cell<bool>>,
+}
+
+#[wasm_bindgen]
+impl TreeDiffFactory {
+    #[wasm_bindgen(constructor)]
+    pub fn new() -> Self {
+        Self {
+            canceled: Rc::new(Cell::new(false)),
+        }
+    }
+
+    pub async fn diff(&self, repo: &Repo, left: &Tree, right: &Tree) -> Result<TreeDiff, JsValue> {
+        let canceled = self.canceled.clone();
+        let cancel = async move || canceled.get();
+        let tree_diff = rgit_diff::TreeDiff::new_cancelable(&repo.0, &left.0, &right.0, cancel)
+            .await
+            .map_err(to_js_error)?;
+        Ok(TreeDiff(tree_diff))
+    }
+
+    pub fn cancel(&self) {
+        self.canceled.set(true);
+    }
+}
+
+#[wasm_bindgen]
 pub struct TreeDiff(rgit_diff::TreeDiff);
 
 #[wasm_bindgen]
 impl TreeDiff {
-    pub async fn diff(repo: &Repo, left: &Tree, right: &Tree) -> Result<Self, JsValue> {
-        Ok(Self(
-            rgit_diff::TreeDiff::new(&repo.0, &left.0, &right.0)
-                .await
-                .map_err(to_js_error)?,
-        ))
-    }
-
     pub fn len(&self) -> usize {
         self.0.entries().len()
     }
@@ -158,18 +182,57 @@ impl TreeDiff {
 
 #[wasm_bindgen]
 #[derive(Serialize, Deserialize)]
-pub struct FullDiff(pub(crate) Vec<FullDiffEntry>);
+pub struct FullDiff(Vec<FullDiffEntry>);
 
 #[wasm_bindgen]
 impl FullDiff {
-    pub async fn from_tree_diff(repo: &Repo, tree_diff: &TreeDiff) -> Result<Self, JsValue> {
-        let tree_diff = &tree_diff.0;
-        let diff = tree_diff
-            .to_text_diff(&repo.0, TextDiffConfig::default())
-            .await
-            .map_err(to_js_error)?;
+    pub fn entries(&self) -> Vec<FullDiffEntry> {
+        self.0.clone()
+    }
+
+    pub fn is_empty(&self) -> bool {
+        self.0.is_empty()
+    }
+
+    pub fn serialize(&self) -> Result<Uint8Array, JsValue> {
+        let buf = to_allocvec(self).map_err(|e| JsError::new(&e.to_string()))?;
+        Ok(Uint8Array::from(buf.as_slice()))
+    }
+
+    pub fn deserialize(buf: &Uint8Array) -> Result<Self, JsValue> {
+        let buf = buf.to_vec();
+        Ok(from_bytes(buf.as_slice()).map_err(|e| JsError::new(&e.to_string()))?)
+    }
+}
+
+#[wasm_bindgen]
+pub struct FullDiffFactory {
+    canceled: Cell<bool>,
+}
+
+#[wasm_bindgen]
+impl FullDiffFactory {
+    #[wasm_bindgen(constructor)]
+    pub fn new() -> Self {
+        Self {
+            canceled: Cell::new(false),
+        }
+    }
+
+    pub async fn from_tree_diff(
+        &self,
+        repo: &Repo,
+        tree_diff: &TreeDiff,
+    ) -> Result<FullDiff, JsValue> {
         let mut entries = Vec::new();
-        for entry in diff.entries() {
+        for entry in tree_diff.0.entries() {
+            if self.canceled.get() {
+                return Err(to_js_error(Error::DiffCanceled));
+            }
+            let entry = entry
+                .resolve(&repo.0, TextDiffConfig::default())
+                .await
+                .map_err(to_js_error)?;
             let entry = entry
                 .map_content_res(|text_diff| -> Result<Vec<Hunk>, JsError> {
                     let grouped_ops = text_diff.grouped_ops(6);
@@ -205,22 +268,8 @@ impl FullDiff {
         Ok(FullDiff(entries))
     }
 
-    pub fn entries(&self) -> Vec<FullDiffEntry> {
-        self.0.clone()
-    }
-
-    pub fn is_empty(&self) -> bool {
-        self.0.is_empty()
-    }
-
-    pub fn serialize(&self) -> Result<Uint8Array, JsValue> {
-        let buf = to_allocvec(self).map_err(|e| JsError::new(&e.to_string()))?;
-        Ok(Uint8Array::from(buf.as_slice()))
-    }
-
-    pub fn deserialize(buf: &Uint8Array) -> Result<Self, JsValue> {
-        let buf = buf.to_vec();
-        Ok(from_bytes(buf.as_slice()).map_err(|e| JsError::new(&e.to_string()))?)
+    pub fn cancel(&self) {
+        self.canceled.set(true);
     }
 }
 
