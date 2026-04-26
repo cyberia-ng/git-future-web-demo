@@ -81,13 +81,13 @@ export function toUrl(state: AppState): string {
       components.push("browse");
       switch (state.commit.type) {
         case "ref": {
-          components.push("ref");
           switch (state.commit.ref.type) {
             case "head": {
-              components.push("");
+              components.push("head");
               break;
             }
             case "ref": {
+              components.push("ref");
               components.push(state.commit.ref.name);
               break;
             }
@@ -119,15 +119,13 @@ export function fromUrl(url: string): AppState {
       const commitComponent = components.shift();
       let commit: FileBrowserCommit;
       switch (commitComponent) {
+        case "head": {
+          commit = { type: "ref", ref: { type: "head" } };
+          break;
+        }
         case "ref": {
           const refComponent = components.shift();
-          let ref: RefNamePlainObject;
-          if (refComponent === "" || refComponent === undefined) {
-            ref = { type: "head" };
-          } else {
-            ref = { type: "ref", name: refComponent };
-          }
-          commit = { type: "ref", ref };
+          commit = { type: "ref", ref: { type: "ref", name: refComponent ?? "" } };
           break;
         }
         case "detached": {
