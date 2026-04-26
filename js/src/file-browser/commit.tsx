@@ -25,25 +25,33 @@ export function Commit({ view, updateState }: StandardProps<unknown, FileBrowser
   );
 }
 
+function unitPluralize(number: number, unit: string) {
+  if (number === 1) {
+    return `1 ${unit} ago`;
+  } else {
+    return `${number} ${unit}s ago`;
+  }
+}
+
 function timeAgo(since: Temporal.Instant, now: Temporal.Instant): string {
   let diff = now.since(since).round("seconds");
   if (diff.seconds < 60) {
-    return `${diff.seconds} seconds ago`;
+    return unitPluralize(diff.seconds, "second");
   }
   diff = diff.round("minutes");
   if (diff.minutes < 60) {
-    return `${diff.minutes} minutes ago`;
+    return unitPluralize(diff.minutes, "minute");
   }
   diff = diff.round("hours");
   if (diff.hours < 24) {
-    return `${diff.hours} hours ago`;
+    return unitPluralize(diff.hours, "hour");
   }
   diff = diff.round("days");
   if (diff.days < 30) {
-    return `${diff.days} days ago`;
+    return unitPluralize(diff.days, "day");
   }
   if (diff.days < 365) {
-    return `${Math.round(diff.days / 30)} months ago`;
+    return unitPluralize(Math.round(diff.days / 30), "month");
   }
-  return `${Math.round(diff.days / 365.2425)} years ago`;
+  return unitPluralize(Math.round(diff.days / 365.2425), "year");
 }
