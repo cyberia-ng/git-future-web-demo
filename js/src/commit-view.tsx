@@ -63,7 +63,12 @@ function DiffSelector({ diff }: { diff: EphemeralState["diff"] }) {
     case undefined:
       return null;
     case "loading":
-      return "diff loading";
+      return (
+        <div className="mt-4 p-3 d-flex align-items-center">
+          <strong role="status">Diff loading...</strong>
+          <div className="spinner-border ms-auto" aria-hidden="true"></div>
+        </div>
+      );
     case "loaded":
       return (
         <div className="mt-4">
