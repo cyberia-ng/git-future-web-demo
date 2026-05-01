@@ -1,5 +1,5 @@
 use crate::directory::{WebDirectory, WebFile};
-use rgit_core::traits::AllGenerics;
+use rgit::traits::AllGenerics;
 
 pub struct WebGenerics;
 impl AllGenerics for WebGenerics {

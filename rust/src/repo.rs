@@ -1,5 +1,5 @@
 use js_sys::{JsString, TypeError};
-use rgit_core::{Repo as RGitRepo, RepoConfig, object::ObjectId};
+use rgit::{Repo as RGitRepo, RepoConfig, object::ObjectId};
 use wasm_bindgen::prelude::*;
 use web_sys::{DomException, FileSystemDirectoryHandle};
 

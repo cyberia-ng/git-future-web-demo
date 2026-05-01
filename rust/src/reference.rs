@@ -5,7 +5,7 @@ use crate::{
     repo::Repo,
 };
 use js_sys::JsString;
-use rgit_core::reference as rgit_ref;
+use rgit::reference as rgit_ref;
 use wasm_bindgen::prelude::*;
 
 #[wasm_bindgen]

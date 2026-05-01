@@ -1,6 +1,6 @@
 use crate::{error::to_js_error, js_interop::MaybeUtf8, repo::Repo};
 use js_sys::JsString;
-use rgit_core::object as rgit_object;
+use rgit::object as rgit_object;
 use serde::{Deserialize, Serialize};
 use wasm_bindgen::prelude::*;
 

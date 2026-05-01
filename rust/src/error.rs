@@ -1,5 +1,5 @@
 use js_sys::JsString;
-use rgit_core::{error::Error, file_system::FilesystemError};
+use rgit::{error::Error, file_system::FilesystemError};
 use wasm_bindgen::JsValue;
 use wasm_bindgen::prelude::*;
 

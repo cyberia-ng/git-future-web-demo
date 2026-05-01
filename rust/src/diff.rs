@@ -6,7 +6,7 @@ use crate::{
 };
 use js_sys::Uint8Array;
 use postcard::{from_bytes, to_allocvec};
-use rgit_core::{
+use rgit::{
     diff::{self as rgit_diff},
     error::Error,
 };
