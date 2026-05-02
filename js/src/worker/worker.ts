@@ -4,8 +4,6 @@ import init, {
   set_panic_hook,
   TreeDiffFactory,
 } from "../../pkg/git_future_web.js";
-import { EntriesDirectory } from "../file-api/entries";
-import { FSDirectory } from "../file-api/fs";
 import type { DiffRequest, DiffResponse, Initialize } from "./types";
 
 onmessage = function onMessage(e: MessageEvent<DiffRequest>) {
@@ -44,14 +42,14 @@ class DiffWorker {
   private constructor(private repo: Repo) { }
 
   static async init(directory: Initialize["directory"]) {
-    let directory_: FSDirectory | EntriesDirectory;
+    let directory_: FileSystemDirectoryHandle | FileList;
     switch (directory.type) {
       case "handle": {
-        directory_ = new FSDirectory(directory.handle);
+        directory_ = directory.handle;
         break;
       }
       case "file list": {
-        directory_ = new EntriesDirectory(directory.entries, directory.rootName);
+        directory_ = directory.files;
         break;
       }
     }

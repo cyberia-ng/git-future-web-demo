@@ -3,9 +3,8 @@ use js_sys::JsString;
 use wasm_bindgen::prelude::*;
 
 use crate::{
-    directory::WebDirectory,
+    directory::{WebDirectory, WebFileSystem},
     error::to_js_error,
-    impls::WebFileSystem,
     object::GitObject,
     reference::{Ref, RefName},
 };
@@ -15,9 +14,12 @@ pub struct Repo(pub(crate) RGitRepo<WebFileSystem>);
 
 #[wasm_bindgen]
 impl Repo {
-    pub async fn construct(directory: &JsValue) -> Result<Self, JsValue> {
+    pub async fn construct(
+        #[wasm_bindgen(unchecked_param_type = "FileSystemDirectoryHandle | FileList")]
+        directory: &JsValue,
+    ) -> Result<Self, JsValue> {
         let repo = RepoConfig::default()
-            .open(WebDirectory::new(directory))
+            .open(WebDirectory::new(directory)?)
             .await
             .map_err(to_js_error)?;
         Ok(Self(repo))

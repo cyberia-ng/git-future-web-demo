@@ -16,7 +16,7 @@ export type Initialize = {
   type: "initialize";
   directory:
   | { type: "handle"; handle: FileSystemDirectoryHandle }
-  | { type: "file list"; entries: File[]; rootName: string };
+  | { type: "file list"; files: FileList };
 };
 
 export type RequestDiff = {

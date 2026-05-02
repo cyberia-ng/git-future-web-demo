@@ -23,8 +23,6 @@ import {
 } from "./model/ephemeral";
 import type { Mutator } from "./model/mutator";
 import { produce } from "immer";
-import { FSDirectory } from "./file-api/fs";
-import { EntriesDirectory } from "./file-api/entries";
 
 export function App() {
   const [repo, setRepo] = useState<{
@@ -104,6 +102,15 @@ export function App() {
         </div>
       </header>
       <main>
+        {repo === null && !window.showDirectoryPicker && (
+          <div className="alert alert-warning alert-dismissible" role="alert">
+            This browser does not support the{" "}
+            <a href="https://developer.mozilla.org/en-US/docs/Web/API/Window/showDirectoryPicker">
+              window.showDirectoryPicker API
+            </a>
+            . Opening a repository will be slow.
+          </div>
+        )}
         <Errors state={ephemeralState.errors} updateErrorState={updateEphemeralState} />
         {derivedView.type === "repo" && (
           <RepoView
@@ -156,8 +163,7 @@ function OpenRepoButton({
   if (window.showDirectoryPicker !== undefined) {
     async function openRepo() {
       const handle = await window.showDirectoryPicker();
-      const directory = new FSDirectory(handle);
-      const repo = await Repo.construct(directory);
+      const repo = await Repo.construct(handle);
       const diffWorker = await DiffWorkerHandle.init({
         type: "handle",
         handle,
@@ -176,13 +182,10 @@ function OpenRepoButton({
         throw new Error("empty directory tree");
       }
       const rootName = first.webkitRelativePath.split("/")[0]!;
-      const filesArray = Array.from(files);
-      const directory = new EntriesDirectory(filesArray, rootName);
-      const repo = await Repo.construct(directory);
+      const repo = await Repo.construct(files);
       const diffWorker = await DiffWorkerHandle.init({
         type: "file list",
-        entries: filesArray,
-        rootName,
+        files,
       });
       onOpen(repo, diffWorker, rootName);
     }

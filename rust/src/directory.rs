@@ -1,7 +1,7 @@
-use git_future::file_system::{DirEntry, Directory, File, FileSystemError, Offset};
+use git_future::file_system::{DirEntry, Directory, File, FileSystem, FileSystemError, Offset};
 use js_sys::{Array, JsString, Promise, Reflect, TypeError, Uint8Array};
 use wasm_bindgen::prelude::*;
-use web_sys::DomException;
+use web_sys::{DomException, FileList, FileSystemDirectoryHandle};
 
 #[wasm_bindgen(module = "/src/directory.js")]
 extern "C" {
@@ -21,6 +21,13 @@ extern "C" {
     fn readAll(this: &FileWrapper) -> Promise;
     #[wasm_bindgen(method)]
     fn readSegment(this: &FileWrapper, offset: f64, length: f64) -> Promise;
+
+    type FSDirectory;
+    #[wasm_bindgen(constructor)]
+    fn new(handle: &FileSystemDirectoryHandle) -> FSDirectory;
+
+    type EntriesDirectory;
+    fn entriesDirectoryFromFileList(fileList: &FileList) -> EntriesDirectory;
 }
 
 pub struct WebDirectory {
@@ -40,9 +47,21 @@ pub struct WebFile {
 }
 
 impl WebDirectory {
-    pub fn new(inner: &JsValue) -> Self {
-        Self {
-            directory: DirectoryWrapper::new(inner),
+    pub fn new(inner: &JsValue) -> Result<Self, JsError> {
+        if let Ok(handle) = inner.clone().dyn_into::<FileSystemDirectoryHandle>() {
+            let directory = FSDirectory::new(&handle);
+            Ok(Self {
+                directory: DirectoryWrapper::new(&directory),
+            })
+        } else if let Ok(file_list) = inner.clone().dyn_into::<web_sys::FileList>() {
+            let directory = entriesDirectoryFromFileList(&file_list);
+            Ok(Self {
+                directory: DirectoryWrapper::new(&directory),
+            })
+        } else {
+            Err(JsError::new(
+                "must provide either a FileSystemDirectory Handle or a FileList object",
+            ))
         }
     }
 }
@@ -143,4 +162,10 @@ impl File for WebFile {
         };
         f().await.map_err(to_directory_error)
     }
+}
+
+pub struct WebFileSystem;
+impl FileSystem for WebFileSystem {
+    type File = WebFile;
+    type Directory = WebDirectory;
 }

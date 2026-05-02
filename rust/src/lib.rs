@@ -9,7 +9,6 @@ use wasm_bindgen::prelude::*;
 mod diff;
 mod directory;
 mod error;
-mod impls;
 mod js_interop;
 mod object;
 mod reference;
