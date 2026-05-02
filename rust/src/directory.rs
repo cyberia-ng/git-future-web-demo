@@ -1,5 +1,5 @@
 use js_sys::{Array, JsString, Promise, Reflect, TypeError, Uint8Array};
-use rgit::file_system::{DirEntry, Directory, File, FilesystemError, Offset};
+use git_future::file_system::{DirEntry, Directory, File, FileSystemError, Offset};
 use wasm_bindgen::prelude::*;
 use web_sys::{DomException, FileSystemDirectoryHandle};
 
@@ -48,18 +48,18 @@ impl WebDirectory {
     }
 }
 
-fn to_directory_error(value: JsValue) -> FilesystemError {
+fn to_directory_error(value: JsValue) -> FileSystemError {
     if value.has_type::<DomException>()
         && Reflect::get(&value, &JsValue::from("name")).unwrap() == "NotFoundError"
     {
-        FilesystemError::NotFound(Box::new(value))
+        FileSystemError::NotFound(Box::new(value))
     } else {
-        FilesystemError::Other(Box::new(value))
+        FileSystemError::Other(Box::new(value))
     }
 }
 
 impl Directory<WebFile> for WebDirectory {
-    async fn open_subdir(&self, name: &[u8]) -> Result<Self, FilesystemError> {
+    async fn open_subdir(&self, name: &[u8]) -> Result<Self, FileSystemError> {
         let f = async || -> Result<Self, JsValue> {
             let subdir: JsWebDirectory = self
                 .directory
@@ -71,7 +71,7 @@ impl Directory<WebFile> for WebDirectory {
         f().await.map_err(to_directory_error)
     }
 
-    async fn list_dir(&self) -> Result<Vec<DirEntry>, FilesystemError> {
+    async fn list_dir(&self) -> Result<Vec<DirEntry>, FileSystemError> {
         let f = async || -> Result<Vec<DirEntry>, JsValue> {
             let entries: Array = self.directory.listDir().await?.dyn_into()?;
             let directories: Array = entries.at(0).dyn_into()?;
@@ -94,7 +94,7 @@ impl Directory<WebFile> for WebDirectory {
         f().await.map_err(to_directory_error)
     }
 
-    async fn open_file(&self, name: &[u8]) -> Result<WebFile, FilesystemError> {
+    async fn open_file(&self, name: &[u8]) -> Result<WebFile, FileSystemError> {
         let f = async || -> Result<WebFile, JsValue> {
             let js_file: JsWebFile = self
                 .directory
@@ -108,7 +108,7 @@ impl Directory<WebFile> for WebDirectory {
 }
 
 impl File for WebFile {
-    async fn read_all(&mut self) -> Result<Vec<u8>, FilesystemError> {
+    async fn read_all(&mut self) -> Result<Vec<u8>, FileSystemError> {
         let f = async || -> Result<Vec<u8>, JsValue> {
             let data: Uint8Array = self.file.readAll().await?.dyn_into()?;
             let mut out = vec![0u8; data.length() as usize];
@@ -122,7 +122,7 @@ impl File for WebFile {
         &mut self,
         offset: Offset,
         dest: &mut [u8],
-    ) -> Result<usize, FilesystemError> {
+    ) -> Result<usize, FileSystemError> {
         let mut f = async || -> Result<usize, JsValue> {
             assert!(offset.0 <= 2u64.pow(53), "offset not representable as f64");
             #[allow(clippy::cast_precision_loss)]

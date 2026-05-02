@@ -4,12 +4,12 @@ use crate::{
     object::{Tree, TreeEntryType},
     repo::Repo,
 };
-use js_sys::Uint8Array;
-use postcard::{from_bytes, to_allocvec};
-use rgit::{
+use git_future::{
     diff::{self as rgit_diff},
     error::Error,
 };
+use js_sys::Uint8Array;
+use postcard::{from_bytes, to_allocvec};
 use serde::{Deserialize, Serialize};
 use similar::TextDiffConfig;
 use std::{cell::Cell, rc::Rc};

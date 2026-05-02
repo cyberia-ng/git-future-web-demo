@@ -4,8 +4,8 @@ use crate::{
     object::{Commit, Tree, from_object_id},
     repo::Repo,
 };
+use git_future::reference as rgit_ref;
 use js_sys::JsString;
-use rgit::reference as rgit_ref;
 use wasm_bindgen::prelude::*;
 
 #[wasm_bindgen]
@@ -47,35 +47,35 @@ impl RefName {
 }
 
 #[wasm_bindgen]
-pub enum RefTypeDiscriminator {
+pub enum RefTargetDiscriminator {
     Direct = "direct",
     Symbolic = "symbolic",
 }
 
 #[wasm_bindgen]
-pub struct RefType(pub(crate) rgit_ref::RefType);
+pub struct RefTarget(pub(crate) rgit_ref::RefTarget);
 
 #[wasm_bindgen]
-impl RefType {
-    pub fn discriminator(&self) -> RefTypeDiscriminator {
-        use RefTypeDiscriminator::*;
+impl RefTarget {
+    pub fn discriminator(&self) -> RefTargetDiscriminator {
+        use RefTargetDiscriminator::*;
         match self.0 {
-            rgit_ref::RefType::Direct(_) => Direct,
-            rgit_ref::RefType::Symbolic(_) => Symbolic,
+            rgit_ref::RefTarget::Direct(_) => Direct,
+            rgit_ref::RefTarget::Symbolic(_) => Symbolic,
         }
     }
 
     pub fn object_id(&self) -> JsString {
         match self.0 {
-            rgit_ref::RefType::Direct(object_id) => from_object_id(object_id),
-            rgit_ref::RefType::Symbolic(_) => panic!("no object ID on symbolic ref"),
+            rgit_ref::RefTarget::Direct(object_id) => from_object_id(object_id),
+            rgit_ref::RefTarget::Symbolic(_) => panic!("no object ID on symbolic ref"),
         }
     }
 
     pub fn name(&self) -> RefName {
         match &self.0 {
-            rgit_ref::RefType::Direct(_) => panic!("no ref name on direct ref"),
-            rgit_ref::RefType::Symbolic(ref_name) => RefName(ref_name.clone()),
+            rgit_ref::RefTarget::Direct(_) => panic!("no ref name on direct ref"),
+            rgit_ref::RefTarget::Symbolic(ref_name) => RefName(ref_name.clone()),
         }
     }
 }
@@ -89,8 +89,8 @@ impl Ref {
         RefName(self.0.name().clone())
     }
 
-    pub fn ref_type(&self) -> RefType {
-        RefType(self.0.ref_type().clone())
+    pub fn ref_type(&self) -> RefTarget {
+        RefTarget(self.0.target().clone())
     }
 
     pub async fn resolve_object_id(&self, repo: &Repo) -> Result<JsString, JsValue> {

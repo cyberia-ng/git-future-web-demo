@@ -1,18 +1,18 @@
+use git_future::{Repo as RGitRepo, RepoConfig, object::ObjectId};
 use js_sys::{JsString, TypeError};
-use rgit::{Repo as RGitRepo, RepoConfig, object::ObjectId};
 use wasm_bindgen::prelude::*;
 use web_sys::{DomException, FileSystemDirectoryHandle};
 
 use crate::{
     directory::WebDirectory,
     error::to_js_error,
-    impls::WebGenerics,
+    impls::WebFileSystem,
     object::GitObject,
     reference::{Ref, RefName},
 };
 
 #[wasm_bindgen]
-pub struct Repo(pub(crate) RGitRepo<WebGenerics>);
+pub struct Repo(pub(crate) RGitRepo<WebFileSystem>);
 
 #[wasm_bindgen]
 impl Repo {

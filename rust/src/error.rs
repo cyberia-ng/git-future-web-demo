@@ -1,12 +1,12 @@
+use git_future::{error::Error, file_system::FileSystemError};
 use js_sys::JsString;
-use rgit::{error::Error, file_system::FilesystemError};
 use wasm_bindgen::JsValue;
 use wasm_bindgen::prelude::*;
 
 pub fn to_js_error(err: Error) -> JsValue {
     use Error::*;
     match err {
-        FileSystem(FilesystemError::NotFound(e) | FilesystemError::Other(e)) => {
+        FileSystem(FileSystemError::NotFound(e) | FileSystemError::Other(e)) => {
             let js_error = e.downcast::<JsValue>().unwrap();
             *js_error
         }
