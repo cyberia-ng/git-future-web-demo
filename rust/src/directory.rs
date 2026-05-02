@@ -1,30 +1,30 @@
-use js_sys::{Array, JsString, Promise, Reflect, TypeError, Uint8Array};
 use git_future::file_system::{DirEntry, Directory, File, FileSystemError, Offset};
+use js_sys::{Array, JsString, Promise, Reflect, TypeError, Uint8Array};
 use wasm_bindgen::prelude::*;
-use web_sys::{DomException, FileSystemDirectoryHandle};
+use web_sys::DomException;
 
 #[wasm_bindgen(module = "/src/directory.js")]
 extern "C" {
-    #[wasm_bindgen]
-    fn constructDirectory(handle: &FileSystemDirectoryHandle) -> Promise;
+    type DirectoryWrapper;
+    #[wasm_bindgen(constructor)]
+    fn new(inner: &JsValue) -> DirectoryWrapper;
 
-    type JsWebDirectory;
     #[wasm_bindgen(method)]
-    fn openSubdir(this: &JsWebDirectory, name: &str) -> Promise;
+    fn openSubdir(this: &DirectoryWrapper, name: &str) -> Promise;
     #[wasm_bindgen(method)]
-    fn listDir(this: &JsWebDirectory) -> Promise;
+    fn listDir(this: &DirectoryWrapper) -> Promise;
     #[wasm_bindgen(method)]
-    fn openFile(this: &JsWebDirectory, name: &str) -> Promise;
+    fn openFile(this: &DirectoryWrapper, name: &str) -> Promise;
 
-    type JsWebFile;
+    type FileWrapper;
     #[wasm_bindgen(method)]
-    fn readAll(this: &JsWebFile) -> Promise;
+    fn readAll(this: &FileWrapper) -> Promise;
     #[wasm_bindgen(method)]
-    fn readSegment(this: &JsWebFile, offset: f64, length: f64) -> Promise;
+    fn readSegment(this: &FileWrapper, offset: f64, length: f64) -> Promise;
 }
 
 pub struct WebDirectory {
-    directory: JsWebDirectory,
+    directory: DirectoryWrapper,
 }
 
 impl Clone for WebDirectory {
@@ -36,21 +36,24 @@ impl Clone for WebDirectory {
 }
 
 pub struct WebFile {
-    file: JsWebFile,
+    file: FileWrapper,
 }
 
 impl WebDirectory {
-    pub async fn new(handle: &web_sys::FileSystemDirectoryHandle) -> Result<Self, JsValue> {
-        let js_directory: JsWebDirectory = constructDirectory(handle).await?.dyn_into()?;
-        Ok(Self {
-            directory: js_directory,
-        })
+    pub fn new(inner: &JsValue) -> Self {
+        Self {
+            directory: DirectoryWrapper::new(inner),
+        }
     }
 }
 
 fn to_directory_error(value: JsValue) -> FileSystemError {
     if value.has_type::<DomException>()
         && Reflect::get(&value, &JsValue::from("name")).unwrap() == "NotFoundError"
+    {
+        FileSystemError::NotFound(Box::new(value))
+    } else if value.has_type::<js_sys::Error>()
+        && Reflect::get(&value, &JsValue::from("message")).unwrap() == "file not found"
     {
         FileSystemError::NotFound(Box::new(value))
     } else {
@@ -61,7 +64,7 @@ fn to_directory_error(value: JsValue) -> FileSystemError {
 impl Directory<WebFile> for WebDirectory {
     async fn open_subdir(&self, name: &[u8]) -> Result<Self, FileSystemError> {
         let f = async || -> Result<Self, JsValue> {
-            let subdir: JsWebDirectory = self
+            let subdir: DirectoryWrapper = self
                 .directory
                 .openSubdir(str::from_utf8(name).map_err(|_| TypeError::new("name was not UTF-8"))?)
                 .await?
@@ -96,7 +99,7 @@ impl Directory<WebFile> for WebDirectory {
 
     async fn open_file(&self, name: &[u8]) -> Result<WebFile, FileSystemError> {
         let f = async || -> Result<WebFile, JsValue> {
-            let js_file: JsWebFile = self
+            let js_file: FileWrapper = self
                 .directory
                 .openFile(str::from_utf8(name).map_err(|_| TypeError::new("name was not UTF-8"))?)
                 .await?

@@ -1,16 +1,14 @@
 import { FullDiff } from "../../pkg/git_future_web";
-import type { DiffRequest, DiffResponse } from "./types";
+import type { DiffRequest, DiffResponse, Initialize } from "./types";
 
-export type DiffWorkerArgs = {
-  directory: FileSystemDirectoryHandle;
-};
+export type DiffWorkerArgs = Initialize["directory"];
 
 export class DiffWorkerHandle {
   private handle: Worker;
   private listener?: (serialized: Uint8Array) => void;
 
   private constructor(
-    { directory }: DiffWorkerArgs,
+    directory: DiffWorkerArgs,
     private onWorkerReady: () => void,
   ) {
     this.handle = new Worker(new URL("worker.ts", import.meta.url));

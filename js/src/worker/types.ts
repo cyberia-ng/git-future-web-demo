@@ -14,7 +14,9 @@ export type DiffRequest = Initialize | RequestDiff;
 
 export type Initialize = {
   type: "initialize";
-  directory: FileSystemDirectoryHandle;
+  directory:
+  | { type: "handle"; handle: FileSystemDirectoryHandle }
+  | { type: "file list"; entries: File[]; rootName: string };
 };
 
 export type RequestDiff = {

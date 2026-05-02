@@ -1,7 +1,6 @@
 use git_future::{Repo as RGitRepo, RepoConfig, object::ObjectId};
-use js_sys::{JsString, TypeError};
+use js_sys::JsString;
 use wasm_bindgen::prelude::*;
-use web_sys::{DomException, FileSystemDirectoryHandle};
 
 use crate::{
     directory::WebDirectory,
@@ -16,9 +15,9 @@ pub struct Repo(pub(crate) RGitRepo<WebFileSystem>);
 
 #[wasm_bindgen]
 impl Repo {
-    pub async fn construct(handle: FileSystemDirectoryHandle) -> Result<Self, JsValue> {
+    pub async fn construct(directory: &JsValue) -> Result<Self, JsValue> {
         let repo = RepoConfig::default()
-            .open(WebDirectory::new(&handle).await?)
+            .open(WebDirectory::new(directory))
             .await
             .map_err(to_js_error)?;
         Ok(Self(repo))

@@ -23,6 +23,8 @@ import {
 } from "./model/ephemeral";
 import type { Mutator } from "./model/mutator";
 import { produce } from "immer";
+import { FSDirectory } from "./file-api/fs";
+import { EntriesDirectory } from "./file-api/entries";
 
 export function App() {
   const [repo, setRepo] = useState<{
@@ -68,16 +70,8 @@ export function App() {
       .catch(handleError);
   }, [repo, hash]);
 
-  async function openRepo() {
-    if (!window.showDirectoryPicker) {
-      throw new Error("This browser does not support window.showDirectoryPicker()");
-    }
-    const handle = await window.showDirectoryPicker();
-    const repo = await Repo.construct(handle);
-    const diffWorker = await DiffWorkerHandle.init({
-      directory: handle,
-    });
-    setRepo({ repo, diffWorker, name: handle.name });
+  async function onOpenRepo(repo: Repo, diffWorker: DiffWorkerHandle, name: string) {
+    setRepo({ repo, diffWorker, name });
     stateNavigate(() => initialFileBrowserState);
     updateEphemeralState(resetEphemeral);
   }
@@ -101,9 +95,7 @@ export function App() {
         </div>
         <div>
           {repo === null ? (
-            <button onClick={() => openRepo().catch(handleError)} className="btn btn-primary">
-              Open repo
-            </button>
+            <OpenRepoButton onOpen={onOpenRepo} onError={handleError} />
           ) : (
             <button onClick={() => closeRepo().catch(handleError)} className="btn btn-secondary">
               Close repo
@@ -152,4 +144,55 @@ function RepoView({ view, updateState }: StandardProps<AppState, RepoView, Ephem
     }
   }
   assertNever(view.state);
+}
+
+function OpenRepoButton({
+  onOpen,
+  onError,
+}: {
+  onOpen: (repo: Repo, diffWorker: DiffWorkerHandle, name: string) => void;
+  onError: (e: unknown) => void;
+}) {
+  if (window.showDirectoryPicker !== undefined) {
+    async function openRepo() {
+      const handle = await window.showDirectoryPicker();
+      const directory = new FSDirectory(handle);
+      const repo = await Repo.construct(directory);
+      const diffWorker = await DiffWorkerHandle.init({
+        type: "handle",
+        handle,
+      });
+      onOpen(repo, diffWorker, handle.name);
+    }
+    return (
+      <button onClick={() => openRepo().catch(onError)} className="btn btn-primary">
+        Open repo
+      </button>
+    );
+  } else {
+    async function openRepo(files: FileList) {
+      const first = files[0];
+      if (first === undefined) {
+        throw new Error("empty directory tree");
+      }
+      const rootName = first.webkitRelativePath.split("/")[0]!;
+      const filesArray = Array.from(files);
+      const directory = new EntriesDirectory(filesArray, rootName);
+      const repo = await Repo.construct(directory);
+      const diffWorker = await DiffWorkerHandle.init({
+        type: "file list",
+        entries: filesArray,
+        rootName,
+      });
+      onOpen(repo, diffWorker, rootName);
+    }
+    return (
+      <input
+        className="btn btn-primary"
+        type="file"
+        {...{ webkitdirectory: "" }}
+        onChange={(e) => openRepo(e.target.files!).catch(onError)}
+      />
+    );
+  }
 }
