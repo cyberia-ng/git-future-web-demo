@@ -1,0 +1,57 @@
+name: Build and publish
+
+on:
+  push:
+    branch: ["main"]
+
+env:
+  CARGO_TERM_COLOR: always
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v6
+      - name: Install JS deps
+        run: |
+          cd js
+          npm ci
+      - uses: jetli/wasm-bindgen-action@v0.2.0
+        with:
+          version: '0.2.120'
+      - name: Install Binaryen
+        run: |
+          curl -LO https://github.com/WebAssembly/binaryen/releases/download/version_129/binaryen-version_129-x86_64-linux.tar.gz
+          BINARYEN_PATH="$(mktemp -d)"
+          tar -xzf binaryen-version_129-x86_64-linux.tar.gz -C "$BINARYEN_PATH"
+          echo "$BINARYEN_PATH/binaryen-version_129/bin" >> "$GITHUB_PATH"
+      - name: Install Rust WASM target
+        run: |
+          rustup toolchain install stable --profile minimal --target wasm32-unknown-unknown --no-self-update
+      - name: Build the WASM module
+        run: |
+          ./scripts/build-wasm.py --release
+      - name: Build the JS
+        run: |
+          cd js
+          npx webpack
+        env:
+          NODE_ENV: production
+      - name: Upload artifact
+        uses: actions/upload-pages-artifact@v3
+        with:
+          path: js/dist/
+
+  deploy:
+    needs: build
+    permissions:
+      pages: write
+      id-token: write
+    environment:
+      name: github-pages
+      url: ${{ steps.deployment.outputs.page_url }}
+    runs-on: ubuntu-latest
+    steps:
+      - name: Deploy to GitHub Pages
+        id: deployment
+        uses: actions/deploy-pages@v4
