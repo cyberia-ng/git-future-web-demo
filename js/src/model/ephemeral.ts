@@ -1,7 +1,7 @@
 import type { AppState } from "./state";
 import type { Mutator } from "./mutator";
 import type { DerivedView } from "./view-model";
-import type { FullDiff } from "../../pkg/git_future_web";
+import type { FullDiff } from "../../pkg/git_async_web";
 
 export type EphemeralState = {
   errors: ErrorState;

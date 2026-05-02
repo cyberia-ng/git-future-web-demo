@@ -1,4 +1,4 @@
-import { FullDiff } from "../../pkg/git_future_web";
+import { FullDiff } from "../../pkg/git_async_web";
 import type { DiffRequest, DiffResponse, Initialize } from "./types";
 
 export type DiffWorkerArgs = Initialize["directory"];

@@ -1,4 +1,4 @@
-use git_future::{error::Error, file_system::FileSystemError};
+use git_async::{error::Error, file_system::FileSystemError};
 use js_sys::JsString;
 use wasm_bindgen::JsValue;
 use wasm_bindgen::prelude::*;

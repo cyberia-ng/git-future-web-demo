@@ -1,5 +1,5 @@
 use crate::{error::to_js_error, js_interop::MaybeUtf8, repo::Repo};
-use git_future::object as rgit_object;
+use git_async::object as rgit_object;
 use js_sys::JsString;
 use serde::{Deserialize, Serialize};
 use wasm_bindgen::prelude::*;

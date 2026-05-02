@@ -1,5 +1,5 @@
 import { createRoot } from "react-dom/client";
-import init, { set_panic_hook } from "../pkg/git_future_web.js";
+import init, { set_panic_hook } from "../pkg/git_async_web.js";
 import { App } from "./app";
 import { createElement, StrictMode } from "react";
 

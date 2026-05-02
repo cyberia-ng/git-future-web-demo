@@ -3,7 +3,7 @@ import init, {
   Repo,
   set_panic_hook,
   TreeDiffFactory,
-} from "../../pkg/git_future_web.js";
+} from "../../pkg/git_async_web.js";
 import type { DiffRequest, DiffResponse, Initialize } from "./types";
 
 onmessage = function onMessage(e: MessageEvent<DiffRequest>) {

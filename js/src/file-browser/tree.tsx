@@ -5,7 +5,7 @@ import type { StandardProps } from "../props";
 import { type FileBrowserState, appendPath } from "../model/state";
 import type { TreeView } from "../model/view-model";
 import { Link } from "../link";
-import type { TreeEntry } from "../../pkg/git_future_web";
+import type { TreeEntry } from "../../pkg/git_async_web";
 
 export function Tree({ view, updateState }: StandardProps<FileBrowserState, TreeView>) {
   const directories = view.derived.entries.filter((entry) => entry.entry_type === "tree");

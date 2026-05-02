@@ -113,10 +113,10 @@ dependencies = [
 ]
 
 [[package]]
-name = "git-future"
-version = "0.1.4"
+name = "git-async"
+version = "0.1.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "de3caf480c5d57483013cfba3e377d3c650f52e3252faf6b2f84ab2179f7e186"
+checksum = "58cc5358e11ff30112db9adec524e31f1a4a62633c7be59c39c82cb953210d7e"
 dependencies = [
  "accessory",
  "chrono",
@@ -131,11 +131,11 @@ dependencies = [
 ]
 
 [[package]]
-name = "git-future-web"
+name = "git-async-web"
 version = "0.1.0"
 dependencies = [
  "console_error_panic_hook",
- "git-future",
+ "git-async",
  "js-sys",
  "postcard",
  "serde",

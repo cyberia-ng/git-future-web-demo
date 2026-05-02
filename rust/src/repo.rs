@@ -1,4 +1,4 @@
-use git_future::{
+use git_async::{
     Repo as RGitRepo, RepoConfig,
     object::ObjectId,
     web::{WebDirectory, WebFileSystem},

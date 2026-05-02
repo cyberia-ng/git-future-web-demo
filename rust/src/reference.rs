@@ -4,7 +4,7 @@ use crate::{
     object::{Commit, Tree, from_object_id},
     repo::Repo,
 };
-use git_future::reference as rgit_ref;
+use git_async::reference as rgit_ref;
 use js_sys::JsString;
 use wasm_bindgen::prelude::*;
 

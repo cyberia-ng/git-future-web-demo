@@ -5,7 +5,7 @@ import type { FileBrowserView } from "../model/view-model";
 import { assertString } from "../helpers/assert-string";
 import { assertNever } from "../helpers/assert-never";
 import { Link } from "../link";
-import type { RefName } from "../../pkg/git_future_web";
+import type { RefName } from "../../pkg/git_async_web";
 import { refNameToPlainObject, type RefNamePlainObject } from "../ref";
 
 export function RefNav({ view, updateState }: StandardProps<FileBrowserState, FileBrowserView>) {

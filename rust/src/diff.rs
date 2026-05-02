@@ -4,7 +4,7 @@ use crate::{
     object::{Tree, TreeEntryType},
     repo::Repo,
 };
-use git_future::{
+use git_async::{
     diff::{self as rgit_diff},
     error::Error,
 };

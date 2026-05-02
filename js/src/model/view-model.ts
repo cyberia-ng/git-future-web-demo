@@ -6,7 +6,7 @@ import {
   type RefName,
   type Repo,
   type TreeEntry,
-} from "../../pkg/git_future_web";
+} from "../../pkg/git_async_web";
 import { assertNever } from "../helpers/assert-never";
 import { refNameFromPlainObject } from "../ref";
 import type { DiffWorkerHandle } from "../worker/handler";
