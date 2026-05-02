@@ -17,30 +17,6 @@ pub struct Repo(pub(crate) RGitRepo<WebFileSystem>);
 #[wasm_bindgen]
 impl Repo {
     pub async fn construct(handle: FileSystemDirectoryHandle) -> Result<Self, JsValue> {
-        let handle: FileSystemDirectoryHandle = match handle.get_file_handle("HEAD").await {
-            Ok(_) => handle,
-            Err(e) => {
-                let e: DomException = e.dyn_into()?;
-                if e.name() == "NotFoundError" {
-                    handle
-                        .get_directory_handle(".git")
-                        .await
-                        .map_err(|e| match e.clone().dyn_into::<DomException>() {
-                            Ok(dom_exception) => {
-                                if dom_exception.name() == "NotFoundError" {
-                                    JsValue::from(TypeError::new("Not a git repository"))
-                                } else {
-                                    JsValue::from(dom_exception)
-                                }
-                            }
-                            Err(_) => e,
-                        })?
-                        .dyn_into()?
-                } else {
-                    return Err(e.into());
-                }
-            }
-        };
         let repo = RepoConfig::default()
             .open(WebDirectory::new(&handle).await?)
             .await
