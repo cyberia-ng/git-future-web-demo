@@ -41,7 +41,7 @@ run(
             "target",
             "wasm32-unknown-unknown",
             "release" if args.release else "perf" if args.perf else "debug",
-            "rgit_web.wasm",
+            "git_future_web.wasm",
         ),
         "--out-dir",
         join(js_dir, "pkg"),
@@ -60,11 +60,11 @@ if args.release or args.perf:
     run(
         [
             "wasm-opt",
-            join(js_dir, "pkg", "rgit_web_bg.wasm"),
+            join(js_dir, "pkg", "git_future_web_bg.wasm"),
             "-O3",
             *opts,
             "-o",
-            join(js_dir, "pkg", "rgit_web_bg.wasm"),
+            join(js_dir, "pkg", "git_future_web_bg.wasm"),
         ],
         cwd=root_dir,
         check=True,

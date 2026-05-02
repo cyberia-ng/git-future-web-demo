@@ -13,7 +13,7 @@ import { FileBrowser } from "./file-browser/index";
 import { CommitView } from "./commit-view";
 import { assertNever } from "./helpers/assert-never";
 import { useHashLocation } from "./use-hash-location";
-import { Repo } from "../pkg/rgit_web";
+import { Repo } from "../pkg/git_future_web";
 import { DiffWorkerHandle } from "./worker/handler";
 import {
   addError,
@@ -95,7 +95,9 @@ export function App() {
     <div className="col-lg-8 mx-auto p-4 py-md-5">
       <header className="d-flex flex-wrap pb-3 mb-5 border-bottom">
         <div className="flex-grow-1">
-          <h4 className="mb-0">{derivedView.type === "repo" ? derivedView.name : "rgit-web"}</h4>
+          <h4 className="mb-0">
+            {derivedView.type === "repo" ? derivedView.name : "git-future web demo"}
+          </h4>
         </div>
         <div>
           {repo === null ? (

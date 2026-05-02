@@ -125,6 +125,22 @@ dependencies = [
 ]
 
 [[package]]
+name = "git-future-web"
+version = "0.1.0"
+dependencies = [
+ "console_error_panic_hook",
+ "git-future",
+ "js-sys",
+ "postcard",
+ "serde",
+ "serde_bytes",
+ "similar",
+ "wasm-bindgen",
+ "wasm-bindgen-futures",
+ "web-sys",
+]
+
+[[package]]
 name = "hex"
 version = "0.4.3"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -263,22 +279,6 @@ source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "41f2619966050689382d2b44f664f4bc593e129785a36d6ee376ddf37259b924"
 dependencies = [
  "proc-macro2",
-]
-
-[[package]]
-name = "rgit-web"
-version = "0.1.0"
-dependencies = [
- "console_error_panic_hook",
- "git-future",
- "js-sys",
- "postcard",
- "serde",
- "serde_bytes",
- "similar",
- "wasm-bindgen",
- "wasm-bindgen-futures",
- "web-sys",
 ]
 
 [[package]]

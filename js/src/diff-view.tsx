@@ -1,7 +1,7 @@
 import { File } from "react-feather";
 import { assertString } from "./helpers/assert-string";
 import type { CSSProperties, ReactNode } from "react";
-import type { FullDiff, FullDiffEntry } from "../pkg/rgit_web";
+import type { FullDiff, FullDiffEntry } from "../pkg/git_future_web";
 
 export function DiffEntryView({ entry }: { entry: FullDiffEntry }) {
   const hunks = entry.hunks();

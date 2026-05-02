@@ -1,4 +1,4 @@
-import { FullDiff } from "../../pkg/rgit_web";
+import { FullDiff } from "../../pkg/git_future_web";
 import type { DiffRequest, DiffResponse } from "./types";
 
 export type DiffWorkerArgs = {

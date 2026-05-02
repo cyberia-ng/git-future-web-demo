@@ -1,4 +1,4 @@
-import { RefName } from "../pkg/rgit_web";
+import { RefName } from "../pkg/git_future_web";
 import { assertNever } from "./helpers/assert-never";
 import { assertString } from "./helpers/assert-string";
 
