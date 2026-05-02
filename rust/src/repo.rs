@@ -1,9 +1,12 @@
-use git_future::{Repo as RGitRepo, RepoConfig, object::ObjectId};
+use git_future::{
+    Repo as RGitRepo, RepoConfig,
+    object::ObjectId,
+    web::{WebDirectory, WebFileSystem},
+};
 use js_sys::JsString;
 use wasm_bindgen::prelude::*;
 
 use crate::{
-    directory::{WebDirectory, WebFileSystem},
     error::to_js_error,
     object::GitObject,
     reference::{Ref, RefName},
