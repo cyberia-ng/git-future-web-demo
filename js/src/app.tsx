@@ -30,7 +30,7 @@ type RepoState = {
   diffWorker: DiffWorkerHandle;
   name: string;
 };
-export function App({ repoControlRoot }: { repoControlRoot: Element }) {
+export function App({ repoControl }: { repoControl: Element }) {
   const [repo, setRepo] = useState<RepoState | null>(null);
   const [hash, navigate] = useHashLocation();
   const [ephemeralState, updateEphemeralState] = useReducer<
@@ -90,8 +90,13 @@ export function App({ repoControlRoot }: { repoControlRoot: Element }) {
           onError={handleError}
           onClose={closeRepo}
         />,
-        repoControlRoot,
+        repoControl,
       )}
+      <title>
+        {repo === null
+          ? "git-async web demo - A git browser in the browser"
+          : repo.name + " - git-async web demo - A git browser in the browser"}
+      </title>
       <div className="col-lg-8 mx-auto p-4 py-md-5">
         <main>
           {repo === null && !window.showDirectoryPicker && (
