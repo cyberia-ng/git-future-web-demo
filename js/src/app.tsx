@@ -99,8 +99,9 @@ export function App({ repoControl }: { repoControl: Element }) {
       </title>
       <div className="col-lg-8 mx-auto p-4 py-md-5">
         <main>
+          {repo === null && <div className="mb-4 px-2">Open a git repo!</div>}
           {repo === null && !window.showDirectoryPicker && (
-            <div className="alert alert-warning alert-dismissible" role="alert">
+            <div className="alert alert-warning" role="alert">
               This browser does not support the{" "}
               <a href="https://developer.mozilla.org/en-US/docs/Web/API/Window/showDirectoryPicker">
                 window.showDirectoryPicker API
