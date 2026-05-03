@@ -26,6 +26,7 @@ export const initialFileBrowserState: FileBrowserState = {
 export type CommitViewState = {
   type: "commit view";
   commitId: string;
+  returnTo: FileBrowserState | null;
 };
 
 export function reset(): Mutator<AppState> {
@@ -64,11 +65,21 @@ export function setFileBrowserRef(ref: RefNamePlainObject): Mutator<AppState> {
   };
 }
 
+export function returnTo(state: FileBrowserState) {
+  return () => state;
+}
+
 export function viewCommit(id: string): Mutator<AppState> {
-  return () => ({
+  return (oldState) => ({
     type: "commit view",
     commitId: id,
     showLargeDiff: false,
+    returnTo:
+      oldState.type === "file browser"
+        ? oldState
+        : oldState.type === "commit view"
+          ? oldState.returnTo
+          : null,
   });
 }
 
@@ -106,6 +117,8 @@ export function toUrl(state: AppState): string {
     case "commit view": {
       components.push("commit");
       components.push(state.commitId);
+      components.push("returnto");
+      components.push(btoa(JSON.stringify(state.returnTo)));
       break;
     }
   }
@@ -146,9 +159,17 @@ export function fromUrl(url: string): AppState {
     }
     case "commit": {
       const commitId = components.shift() ?? "";
+      let returnTo: FileBrowserState | null = null;
+      if (components.shift() === "returnto") {
+        const returnToEncoded = components.shift();
+        if (returnToEncoded !== undefined) {
+          returnTo = JSON.parse(atob(returnToEncoded));
+        }
+      }
       return {
         type: "commit view",
         commitId,
+        returnTo,
       };
     }
     default: {

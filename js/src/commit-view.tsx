@@ -1,10 +1,11 @@
 import type { DetailedHTMLProps, HTMLAttributes, ReactNode } from "react";
 import type { StandardProps } from "./props";
-import { browseCommit, viewCommit, type CommitViewState } from "./model/state";
+import { browseCommit, returnTo, viewCommit, type CommitViewState } from "./model/state";
 import type { CommitView } from "./model/view-model";
 import { DiffView } from "./diff-view";
 import { Link } from "./link";
 import type { EphemeralState } from "./model/ephemeral";
+import { ArrowLeft } from "react-feather";
 
 export function CommitView({ view, updateState }: StandardProps<CommitViewState, CommitView>) {
   const diff = view.ephemeral.diff;
@@ -14,6 +15,7 @@ export function CommitView({ view, updateState }: StandardProps<CommitViewState,
   const differentCommitDate = commit.commit_date !== commit.author_date;
   return (
     <>
+      <ReturnTo view={view} updateState={updateState} />
       <ul className="list-group">
         <li className="list-group-item d-flex flex-wrap bg-body-tertiary align-items-center">
           <strong>Commit</strong>
@@ -93,5 +95,41 @@ function CommitHeader({
         {children}
       </span>
     </li>
+  );
+}
+
+function ReturnTo({ view, updateState }: StandardProps<CommitViewState, CommitView>) {
+  const returnState = view.state.returnTo;
+  if (returnState === null) {
+    return <></>;
+  }
+  let name: string;
+  switch (returnState.commit.type) {
+    case "ref": {
+      const ref = returnState.commit.ref;
+      switch (ref.type) {
+        case "head":
+          name = "HEAD";
+          break;
+        case "ref":
+          name = ref.name;
+          break;
+      }
+      break;
+    }
+    case "detached": {
+      name = returnState.commit.id.slice(0, 7);
+    }
+  }
+  return (
+    <div className="bg-body-tertiary rounded-3 mb-3">
+      <Link
+        className="p-3 d-flex text-decoration-none link-body-emphasis"
+        onClick={() => updateState(returnTo(returnState))}
+      >
+        <ArrowLeft />
+        <div className="ms-2">Return to {name}</div>
+      </Link>
+    </div>
   );
 }
