@@ -2,7 +2,7 @@
   "name": "git-async-web",
   "version": "1.0.0",
   "description": "",
-  "license": "GPL-3.0",
+  "license": "AGPL-3.0",
   "author": "",
   "type": "module",
   "main": "index.js",

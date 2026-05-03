@@ -8,7 +8,6 @@ window.onload = () => {
     .then(() => set_panic_hook())
     .catch(console.error);
   const root = createRoot(document.querySelector("#react-root")!);
-  const tempRepoControlRoot = document.createElement("div");
   const node = createElement(
     StrictMode,
     {},
