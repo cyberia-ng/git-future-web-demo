@@ -23,13 +23,15 @@ import {
 } from "./model/ephemeral";
 import type { Mutator } from "./model/mutator";
 import { produce } from "immer";
+import { createPortal } from "react-dom";
 
-export function App() {
-  const [repo, setRepo] = useState<{
-    repo: Repo;
-    diffWorker: DiffWorkerHandle;
-    name: string;
-  } | null>(null);
+type RepoState = {
+  repo: Repo;
+  diffWorker: DiffWorkerHandle;
+  name: string;
+};
+export function App({ repoControlRoot }: { repoControlRoot: Element }) {
+  const [repo, setRepo] = useState<RepoState | null>(null);
   const [hash, navigate] = useHashLocation();
   const [ephemeralState, updateEphemeralState] = useReducer<
     EphemeralState,
@@ -68,58 +70,49 @@ export function App() {
       .catch(handleError);
   }, [repo, hash]);
 
-  async function onOpenRepo(repo: Repo, diffWorker: DiffWorkerHandle, name: string) {
-    setRepo({ repo, diffWorker, name });
+  function onOpenRepo(repoState: RepoState) {
+    setRepo(repoState);
     stateNavigate(() => initialFileBrowserState);
     updateEphemeralState(resetEphemeral);
   }
-  async function closeRepo() {
-    if (repo !== null) {
-      repo.repo.close();
-      repo.diffWorker.close();
-    }
+  function closeRepo() {
     setRepo(null);
     stateNavigate(reset());
     updateEphemeralState(resetEphemeral);
   }
 
   return (
-    <div className="col-lg-8 mx-auto p-4 py-md-5">
-      <header className="d-flex flex-wrap pb-3 mb-5 border-bottom">
-        <div className="flex-grow-1">
-          <h4 className="mb-0">
-            {derivedView.type === "repo" ? derivedView.name : "git-async web demo"}
-          </h4>
-        </div>
-        <div>
-          {repo === null ? (
-            <OpenRepoButton onOpen={onOpenRepo} onError={handleError} />
-          ) : (
-            <button onClick={() => closeRepo().catch(handleError)} className="btn btn-secondary">
-              Close repo
-            </button>
+    <>
+      {createPortal(
+        <RepoControl
+          repoState={repo}
+          onOpen={onOpenRepo}
+          onError={handleError}
+          onClose={closeRepo}
+        />,
+        repoControlRoot,
+      )}
+      <div className="col-lg-8 mx-auto p-4 py-md-5">
+        <main>
+          {repo === null && !window.showDirectoryPicker && (
+            <div className="alert alert-warning alert-dismissible" role="alert">
+              This browser does not support the{" "}
+              <a href="https://developer.mozilla.org/en-US/docs/Web/API/Window/showDirectoryPicker">
+                window.showDirectoryPicker API
+              </a>
+              . Opening a repository will be slow.
+            </div>
           )}
-        </div>
-      </header>
-      <main>
-        {repo === null && !window.showDirectoryPicker && (
-          <div className="alert alert-warning alert-dismissible" role="alert">
-            This browser does not support the{" "}
-            <a href="https://developer.mozilla.org/en-US/docs/Web/API/Window/showDirectoryPicker">
-              window.showDirectoryPicker API
-            </a>
-            . Opening a repository will be slow.
-          </div>
-        )}
-        <Errors state={ephemeralState.errors} updateErrorState={updateEphemeralState} />
-        {derivedView.type === "repo" && (
-          <RepoView
-            view={viewModel(appState, derivedView, ephemeralState)}
-            updateState={stateNavigate}
-          />
-        )}
-      </main>
-    </div>
+          <Errors state={ephemeralState.errors} updateErrorState={updateEphemeralState} />
+          {derivedView.type === "repo" && (
+            <RepoView
+              view={viewModel(appState, derivedView, ephemeralState)}
+              updateState={stateNavigate}
+            />
+          )}
+        </main>
+      </div>
+    </>
   );
 }
 
@@ -153,13 +146,32 @@ function RepoView({ view, updateState }: StandardProps<AppState, RepoView, Ephem
   assertNever(view.state);
 }
 
-function OpenRepoButton({
+function RepoControl({
+  repoState: repoState,
   onOpen,
   onError,
+  onClose,
 }: {
-  onOpen: (repo: Repo, diffWorker: DiffWorkerHandle, name: string) => void;
+  repoState: RepoState | null;
+  onOpen: (repoState: RepoState) => void;
   onError: (e: unknown) => void;
+  onClose: () => void;
 }) {
+  if (repoState !== null) {
+    async function closeRepo() {
+      repoState?.repo.close();
+      repoState?.diffWorker.close();
+      onClose();
+    }
+    return (
+      <div className="d-flex align-items-center">
+        <div className="me-3">{repoState.name}</div>
+        <button onClick={() => closeRepo().catch(onError)} className="btn btn-secondary">
+          Close repo
+        </button>
+      </div>
+    );
+  }
   if (window.showDirectoryPicker !== undefined) {
     async function openRepo() {
       const handle = await window.showDirectoryPicker();
@@ -168,7 +180,7 @@ function OpenRepoButton({
         type: "handle",
         handle,
       });
-      onOpen(repo, diffWorker, handle.name);
+      onOpen({ repo, diffWorker, name: handle.name });
     }
     return (
       <button onClick={() => openRepo().catch(onError)} className="btn btn-primary">
@@ -187,7 +199,7 @@ function OpenRepoButton({
         type: "file list",
         files,
       });
-      onOpen(repo, diffWorker, rootName);
+      onOpen({ repo, diffWorker, name: rootName });
     }
     return (
       <input

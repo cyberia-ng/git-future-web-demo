@@ -8,6 +8,11 @@ window.onload = () => {
     .then(() => set_panic_hook())
     .catch(console.error);
   const root = createRoot(document.querySelector("#react-root")!);
-  const node = createElement(StrictMode, {}, createElement(App));
+  const tempRepoControlRoot = document.createElement("div");
+  const node = createElement(
+    StrictMode,
+    {},
+    createElement(App, { repoControlRoot: document.querySelector("#repo-control")! }),
+  );
   root.render(node);
 };
