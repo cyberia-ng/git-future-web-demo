@@ -13,7 +13,7 @@ for file system operations. It's a git browser in your web browser!
 The most widely-used git library, [libgit2](https://libgit2.org/), is tied to
 the standard operating system file API. This means:
 
-- It won't work with an asynchronous, event-based runtimes.
+- It won't work with asynchronous, event-based runtimes.
 - It can't possibly work in the browser.
 
 So I thought it would be interesting to write a git library that solved these
